@@ -1,12 +1,12 @@
 """
- sacntest.py
+ sacnproxy.py
 
- Receives e1.31 packets containing pixel data from lightshowpi and sends
- them via setVars() to a Pixelblaze.
+ Receives e1.31 packets containing pixel data and send
+ them via websockets to a Pixelblaze.
  
- Requires Python 3, websocket-client, sacn and pyblaze.py
+ Requires Python 3.10+, pixelblaze-client and sacn
  
- Copyright 2020 JEM (ZRanger1)
+ Copyright 2023 JEM (ZRanger1)
 
  Permission is hereby granted, free of charge, to any person obtaining a copy of this
  software and associated documentation files (the "Software"), to deal in the Software
@@ -35,7 +35,7 @@ import time
 import json
 import sys
 import array
-import ConfigParser
+from ConfigParser import ConfigParser
 import DisplayDevice
 
 
@@ -53,7 +53,7 @@ class SacnProxy:
     delay = 0.033333  # default to 30 fps outgoing limit
     notify_ms = 3000  # throughput check every <notify_ms> milliseconds
     show_fps = False
-    configFileName = "../config/config.conf"
+    configFileName = "./config/config.conf"
 
     config = None
     universeFragments = None
@@ -62,9 +62,12 @@ class SacnProxy:
     pixels = []
     
     def __init__(self, bindAddr, pixelBlazeAddr):
-        print("hi there!")
 
-        ConfigParser.load(self.configFileName)
+        jim = ConfigParser()
+
+        jim.load(self.configFileName)
+
+        """
 
         # should use numpy for performance
         #self.pixels = [0 for x in range(512)]  # max size of a dmx universe tuple
@@ -79,6 +82,7 @@ class SacnProxy:
 
         # set things up to listen for packets on all universes and call our dispatcher
         #self.receiver.register_listener('universe', main_dispatcher)
+        """
 
         """
         TODO - what we need to do here is scan our config file for universes and create
@@ -95,8 +99,6 @@ class SacnProxy:
             self.pack_data(packet.dmxData, 0)
             self.dataReady = True
         """
-
-
 
     def debugPrintFps(self):
         self.show_fps = True
@@ -150,7 +152,7 @@ class SacnProxy:
         self.receiver.stop()
         self.pb.close()
         
-
+"""
 if __name__ == "__main__":
     print("Hi from main")
 
@@ -176,7 +178,9 @@ if __name__ == "__main__":
         mirror.stop()
         template = "sacnProxy halted by unexpected exception. Type: {0},  Args:\n{1!r}"
         message = template.format(type(blarf).__name__, blarf.args)
-        print(message)         
+        print(message)    
+        
+"""
         
         
 

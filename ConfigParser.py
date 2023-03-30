@@ -11,7 +11,7 @@ import Universe
 class ConfigParser:
     # this file holds the default configuration
     # TODO - do we need this?  What does it need to do?
-    fileName = "../config/defaults.conf"
+    fileName = "./config/defaults.conf"
 
     def buildDeviceList(self,config) :
         deviceList = []
@@ -63,7 +63,7 @@ class ConfigParser:
         """
         return config.get(keyName, defaultValue)
 
-    def load(self, fileName):
+    def load(self,fileName):
         """
         read, parse and validate configuration data
         """

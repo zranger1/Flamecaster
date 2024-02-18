@@ -567,7 +567,7 @@ class Pixelblaze:
         where the application is mostly sending data to the Pixelblaze
         
         It keeps the receive buffer clear of stray packets, and since connection maintenance
-        is handled by ws.recv(), keeps the connection alive.  Otherwise it'll time out and hang or
+        is handled by ws.recv(), keeps the connection alive.  Otherwise, it'll time out and hang or
         disconnect after about 10 minutes.          
         """
         while loop:

@@ -16,7 +16,6 @@ class DisplayDevice:
     name = "<no device>"
     pixelCount = 0
     pixelsReceived = 0
-    colorFormat = ColorFormat.RGB
     send_flag = threading.Event()
 
     pixels = []
@@ -27,8 +26,6 @@ class DisplayDevice:
         self.ip = getParam(device, 'ip', "")
         self.name = getParam(device, 'name', "<none>")
         self.pixelCount = getParam(device, 'pixelCount', 0)
-        cf = getParam(device, 'colorFormat', "RGB")
-        self.colorFormat = ColorFormat.HSV if cf == "HSV" else ColorFormat.RGB
 
         # initialize output pixel array
         self.pixels = np.zeros(self.pixelCount, dtype=np.float32)
@@ -81,7 +78,8 @@ class DisplayDevice:
 
     def send_frame(self):
         if self.pb is not None:
-            d = "{\"setVars\":{\"pixels\":"+np.array2string(self.pixels, precision=5, separator=',', suppress_small=True)+"}}"
+            d = ("{\"setVars\":{\"pixels\":" +
+                 np.array2string(self.pixels, precision=5, separator=',', suppress_small=True)+"}}")
             self.pb.wsSendString(d)
 
     def run_thread(self):
@@ -105,11 +103,10 @@ class DisplayDevice:
                 self.pixelsReceived = 0
                 self.send_flag.clear()
                 # print("Done sending frame for " + self.name)
-            # otherwise, devour all incoming messages
-            else:
-                self.pb.maintain_connection(False)
 
+            # otherwise, devour all incoming messages
+            self.pb.maintain_connection(False)
 
     def __str__(self):
         return "DisplayDevice: name: " + self.name + " ip: " + self.ip + " pixelCount: " + str(
-            self.pixelCount) + " colorFormat: " + str(self.colorFormat)
+            self.pixelCount) + " pixelsReceived: " + str(self.pixelsReceived)

@@ -273,7 +273,7 @@ class Pixelblaze:
             traceback (_type_): As per Python standard.
         """
         # Make sure we clean up after ourselves.
-        if not self is None: self._close()
+        if not self is None: self.close()
 
     # --- STATIC METHODS
 
@@ -438,7 +438,7 @@ class Pixelblaze:
             self.latestSequencer = None
             self.latestExpander = None
 
-    def _close(self):
+    def close(self):
         """Close websocket connection."""
         if self.connected is True:
             self.ws.close()
@@ -536,14 +536,14 @@ class Pixelblaze:
             except websocket._exceptions.WebSocketConnectionClosedException:  # try reopening
                 # print("wsReceive reconnection")
                 self.connectionBroken = True
-                self._close()
+                self.close()
                 self._open()
 
             except IOError as e:
                 # add test for WinError 10054 - existing connection reset
                 if e.errno == errno.EPIPE or e.errno == 10054:
                     self.connectionBroken = True
-                    self._close()
+                    self.close()
                     self._open()
 
             except Exception as e:
@@ -597,7 +597,7 @@ class Pixelblaze:
         except websocket._exceptions.WebSocketConnectionClosedException:
             # print("wsSendString received WebSocketConnectionClosedException")
             self.connectionBroken = True
-            self._close()
+            self.close()
             self._open()  # try reopening
 
         except IOError as e:
@@ -605,13 +605,13 @@ class Pixelblaze:
             # add test for WinError 10054 - existing connection reset
             if e.errno == errno.EPIPE or e.errno == 10054:
                 self.connectionBroken = True
-                self._close()
+                self.close()
                 self._open()
 
         except:
             print("wsSendString received unexpected exception")
             self.connectionBroken = True
-            self._close()
+            self.close()
             self._open()  # try reopening  # raise
 
     def wsSendJson(self, command: dict, *, expectedResponse=None) -> Union[str, bytes, None]:
@@ -656,19 +656,19 @@ class Pixelblaze:
 
             except websocket._exceptions.WebSocketConnectionClosedException:
                 self.connectionBroken = True
-                self._close()
+                self.close()
                 self._open()  # try reopening
 
             except IOError as e:
                 # add test for WinError 10054 - existing connection reset
                 if e.errno == errno.EPIPE or e.errno == 10054:
                     self.connectionBroken = True
-                    self._close()
+                    self.close()
                     self._open()
 
             except:
                 self.connectionBroken = True
-                self._close()
+                self.close()
                 self._open()  # try reopening  # raise
 
     def wsSendBinary(self, binaryMessageType: messageTypes, blob: bytes, *, expectedResponse: str = None):
@@ -727,21 +727,21 @@ class Pixelblaze:
                 # print("wsSendBinary reconnection")
                 # try reopening
                 self.connectionBroken = True
-                self._close()
+                self.close()
                 self._open()
 
             except IOError as e:
                 # add test for WinError 10054 - existing connection reset
                 if e.errno == errno.EPIPE or e.errno == 10054:
                     self.connectionBroken = True
-                    self._close()
+                    self.close()
                     self._open()
 
             except:
                 # print("wsSendBinary received unexpected exception")
                 # try reopening
                 self.connectionBroken = True
-                self._close()
+                self.close()
                 self._open()  # raise
 
     def getPeers(self):

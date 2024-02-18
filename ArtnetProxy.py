@@ -27,13 +27,12 @@
  Version  Date         Author    Comment
  v0.5.0   03/30/2023   ZRanger1  Initial version
 """
-import time
 import json
 import logging
+import time
 
-from ArtnetUtils import decode_address_int
-from ConfigParser import ConfigParser
 from ArtnetServer import ArtnetServer
+from ConfigParser import ConfigParser
 
 
 class ArtnetProxy:
@@ -76,34 +75,6 @@ class ArtnetProxy:
             for k in u:
                 print(k)
 
-        """
-        # should use numpy for performance
-        #self.pixels = [0 for x in range(512)]  # max size of a dmx universe tuple
-
-        # bind multicast receiver to specific IP address
-        #self.receiver = sacn.sACNreceiver(bind_address=bindAddr)
-        #self.receiver.start()  # start receiver thread
-
-        # set things up to listen for packets on all universes and call our dispatcher
-        #self.receiver.register_listener('universe', main_dispatcher)
-        """
-
-        """
-        TODO - what we need to do here is scan our config file for universes and create
-        an appropriate callback fo
-        r each one, which will parse the data and fill in pixels
-        on every relevant display device, then invoke that device's "send" method to 
-        get the data to the Pixelblaze.      
-        """
-
-        """
-        # how to pack and send a packet of data to pixelblaze, in case I forget.
-         @self.receiver.listen_on('universe', universe=1) 
-         def callback_one(packet):  # packet is type sacn.DataPacket.
-            self.pack_data(packet.dmxData, 0)
-            self.dataReady = True
-        """
-
     def debugPrintFps(self):
         self.show_fps = True
 
@@ -133,46 +104,41 @@ class ArtnetProxy:
             self.notifyTimer = self.time_millis()
         pass
 
-    def send_frame(self):
-        logging.debug("Sending frame")
-        pass
-
     def run(self):
         # bind multicast receiver to specific IP address
         logging.debug("Binding to %s" % self.config['listenAddress'])
         self.isRunning = True
         self.notifyTimer = self.time_millis()
 
-        # loop forever, listening for packets and forwarding the pixel data
+        # loop 'till we're done, listening for packets and forwarding the pixel data
         # to Pixelblazes
 
         self.receiver = ArtnetServer()
         self.receiver.register_listener(self.main_dispatcher)
 
         while self.isRunning:
-            # TODO - limit outgoing framerate in a cleaner way.
             # TODO - add UI loop in here somewhere...
+            # sleep between UI updates (if the UI existed)
 
-            """
-            THE OLD WAY!
-            
-            if self.dataReady:
-                self.send_frame()
-                self.calc_frame_stats()
-                self.dataReady = False
-            """
-            time.sleep(0.5)
+            try:
+                time.sleep(0.5)
+            except KeyboardInterrupt:
+                break
 
         self.stop()
 
     def stop(self):
-        # close all pixelblaze connections and stop those threads too.
+        # stop all devices in DeviceList
+        for key in self.deviceList:
+            self.deviceList[key].stop()
+
+        # stop listening for Artnet packets
         logging.info("Stopping Artnet receiver")
         del self.receiver
 
     def main_dispatcher(self, addr, data):
         """Test function, receives data from server callback."""
-        universe, subnet, net = decode_address_int(addr)
+        # universe, subnet, net = decode_address_int(addr)
         # print("Received data on universe %d, subnet %d, net %d" % (universe, subnet, net))
 
         # test against the universe fragments in universes and print any matches

@@ -1,10 +1,14 @@
 """
 Per display device object - handles websocket connection, holds pixel buffer,
 and sending data to a single Pixelblaze
+
+TODO - respect max frame rate
 """
 import logging
 from threading import Thread
+
 import numpy as np
+
 from pixelblaze import *
 from utilities import *
 
@@ -16,6 +20,7 @@ class DisplayDevice:
     name = "<no device>"
     pixelCount = 0
     pixelsReceived = 0
+    run_flag = threading.Event()
     send_flag = threading.Event()
 
     pixels = []
@@ -38,6 +43,7 @@ class DisplayDevice:
         # TODO - is a thread smooth enough for this or do we need a process?
         thread = Thread(target=self.run_thread)
         thread.daemon = True
+        self.run_flag.set()
         thread.start()
 
     def process_pixel_data(self, dmxPixels: bytearray, destPixel: int, count: int):
@@ -79,7 +85,7 @@ class DisplayDevice:
     def send_frame(self):
         if self.pb is not None:
             d = ("{\"setVars\":{\"pixels\":" +
-                 np.array2string(self.pixels, precision=5, separator=',', suppress_small=True)+"}}")
+                 np.array2string(self.pixels, precision=5, separator=',', suppress_small=True) + "}}")
             self.pb.wsSendString(d)
 
     def run_thread(self):
@@ -95,7 +101,7 @@ class DisplayDevice:
         logging.debug("Connection is %s" % ("open" if self.pb.is_connected() else "not open"))
 
         # loop until the thread gets a kill signal
-        while True:
+        while self.run_flag.is_set():
             # if we have pixels to send, do so
             if self.send_flag.is_set():
                 # print("Sending frame for " + self.name + " with " + str(self.pixelsReceived) + " pixels.")
@@ -106,6 +112,15 @@ class DisplayDevice:
 
             # otherwise, devour all incoming messages
             self.pb.maintain_connection(False)
+
+    def stop(self):
+        logging.info("Stopping Pixelblaze: " + self.name)
+        self.run_flag.clear()
+        self.send_flag.clear()
+        if self.pb is not None:
+            self.pb.close()
+        self.pb = None
+        # self.thread.join()
 
     def __str__(self):
         return "DisplayDevice: name: " + self.name + " ip: " + self.ip + " pixelCount: " + str(

@@ -1,12 +1,12 @@
 """
- sacnproxy.py
+ Flamethrower for Pixelblaze
 
- Receives e1.31 packets containing pixel data and send
- them via websockets to a Pixelblaze.
+ sACN/Artnet router:  Receives LED data packets and distributes
+ them via websockets to one or more Pixelblazes
  
  Requires Python 3.10+, pixelblaze-client and sacn
  
- Copyright 2023 JEM (ZRanger1)
+ Copyright 2023 ZRanger1
 
  Permission is hereby granted, free of charge, to any person obtaining a copy of this
  software and associated documentation files (the "Software"), to deal in the Software
@@ -25,26 +25,23 @@
  THE SOFTWARE.
 
  Version  Date         Author    Comment
- v0.0.1   11/27/2020   ZRanger1  Created
- v0.0.2   12/01/2020   ZRanger1  Update pixelblaze-client lib
- v0.1.0   12/28/2022   ZRanger1  Actually make this thing useful
+ v0.5.0   03/30/2023   ZRanger1  Initial version
 """
-from pixelblaze import *
-import sacn
 import time
 import json
-import sys
-import array
+import logging
+
+from ArtnetUtils import decode_address_int
 from ConfigParser import ConfigParser
-import DisplayDevice
+from ArtnetServer import ArtnetServer
 
 
-class SacnProxy:
+class ArtnetProxy:
     """
-    Listens for e1.31 (sACN) data and forwards it to one or more Pixelblazes.
+    Listens for data and forwards it to one or more Pixelblazes.
     """
-    pb = None
     receiver = None
+    isRunning = False
     pixelsPerUniverse = 170
     pixelCount = 0
     dataReady = False
@@ -56,25 +53,32 @@ class SacnProxy:
     configFileName = "./config/config.conf"
 
     config = None
-    universeFragments = None
+    universes = []
     deviceList = None
-    
+
     pixels = []
-    
-    def __init__(self, bindAddr, pixelBlazeAddr):
+
+    def __init__(self):
+        logging.basicConfig(level=logging.DEBUG)
 
         jim = ConfigParser()
+        self.config, self.deviceList, self.universes = jim.load(self.configFileName)
+        print(json.dumps(self.config, indent=4))
 
-        jim.load(self.configFileName)
+        # print the value for each key in deviceList
+        for key in self.deviceList:
+            print(key + " : " + str(self.deviceList[key]))
+
+        # print the value for each key in universes
+        for key in self.universes:
+            u = self.universes[key]
+            # print each key and value
+            for k in u:
+                print(k)
 
         """
-
         # should use numpy for performance
         #self.pixels = [0 for x in range(512)]  # max size of a dmx universe tuple
-
-        #self.pb = Pixelblaze(pixelBlazeAddr)   # create Pixelblaze object
-        #result = self.pb.getHardwareConfig()
-        #self.pixelCount = result['pixelCount']
 
         # bind multicast receiver to specific IP address
         #self.receiver = sacn.sACNreceiver(bind_address=bindAddr)
@@ -89,7 +93,7 @@ class SacnProxy:
         an appropriate callback fo
         r each one, which will parse the data and fill in pixels
         on every relevant display device, then invoke that device's "send" method to 
-        get the data to the Pixelblaze.
+        get the data to the Pixelblaze.      
         """
 
         """
@@ -102,86 +106,78 @@ class SacnProxy:
 
     def debugPrintFps(self):
         self.show_fps = True
-                       
+
     def setPixelsPerUniverse(self, pix):
-        self.pixelsPerUniverse =  max(1, min(pix, 170))  # clamp to 1-170 pixels
-        
+        self.pixelsPerUniverse = max(1, min(pix, 170))  # clamp to 1-170 pixels
+
     def setMaxOutputFps(self, fps):
         self.delay = 1 / fps
-        
+
     def setThroughputCheckInterval(self, ms):
         self.notify_ms = max(500, ms)  # min interval is 1/2 second, default should be about 3 sec
-    
-    def time_millis(self):
+
+    @staticmethod
+    def time_millis():
         return int(round(time.time() * 1000))
-    
+
     def calc_frame_stats(self):
         self.FrameCount += 1
-        
+
         t = self.time_millis() - self.notifyTimer
-        if (t >= self.notify_ms):
+        if t >= self.notify_ms:
             t = 1000 * self.FrameCount / self.notify_ms
-            if (self.show_fps):
-                print("Incoming fps: %d"%t)
-            self.FrameCount = 0                                      
-          
-            self.notifyTimer = self.time_millis()                  
-        pass
-    
+            if self.show_fps:
+                logging.info("Incoming fps: %d" % t)
+            self.FrameCount = 0
 
-        
+            self.notifyTimer = self.time_millis()
+        pass
+
+    def send_frame(self):
+        logging.debug("Sending frame")
+        pass
+
     def run(self):
-                    
-        # start listening for multicasts -- joining a single universe seems to get you 
-        # multicast packets for all universes, at least from lightshowpi.
-        # TODO - verify that this works with other sacn providers
-        self.receiver.join_multicast(1)
-        self.notifyTimer = self.time_millis() 
-        
-        # loop forever, listening for sacn packets and forwarding the pixel data
-        # to Pixelblaze
-        while True:    
-            time.sleep(self.delay) # limit outgoing framerate
+        # bind multicast receiver to specific IP address
+        logging.debug("Binding to %s" % self.config['listenAddress'])
+        self.isRunning = True
+        self.notifyTimer = self.time_millis()
+
+        # loop forever, listening for packets and forwarding the pixel data
+        # to Pixelblazes
+
+        self.receiver = ArtnetServer()
+        self.receiver.register_listener(self.main_dispatcher)
+
+        while self.isRunning:
+            # TODO - limit outgoing framerate in a cleaner way.
+            # TODO - add UI loop in here somewhere...
+
+            """
+            THE OLD WAY!
             
-            if (self.dataReady == True):
-                self.send_frame(self.pb)               
-                self.calc_frame_stats()                                      
+            if self.dataReady:
+                self.send_frame()
+                self.calc_frame_stats()
                 self.dataReady = False
-                
+            """
+            time.sleep(0.5)
+
+        self.stop()
+
     def stop(self):
-        self.receiver.stop()
-        self.pb.close()
-        
-"""
-if __name__ == "__main__":
-    print("Hi from main")
+        # close all pixelblaze connections and stop those threads too.
+        logging.info("Stopping Artnet receiver")
+        del self.receiver
 
-    mirror = SacnProxy("127.0.0.1", "192.168.1.18")  # arguments: ip address of proxy machine, ip address of pixelblaze
-    mirror.setPixelsPerUniverse(170)
-    mirror.setMaxOutputFps(30)
-    mirror.setThroughputCheckInterval(3000)
-    mirror.debugPrintFps()
+    def main_dispatcher(self, addr, data):
+        """Test function, receives data from server callback."""
+        universe, subnet, net = decode_address_int(addr)
+        # print("Received data on universe %d, subnet %d, net %d" % (universe, subnet, net))
 
-    exit(-1)
-
-    
-    try:
-        pass
-
-        #mirror.run()   # run forever (until stopped by ctrl-c or exception)
-       
-    except KeyboardInterrupt:
-        mirror.stop()
-        print("sacnProxy halted by keyboard interrupt")
-    
-    except Exception as blarf:
-        mirror.stop()
-        template = "sacnProxy halted by unexpected exception. Type: {0},  Args:\n{1!r}"
-        message = template.format(type(blarf).__name__, blarf.args)
-        print(message)    
-        
-"""
-        
-        
-
-    
+        # test against the universe fragments in universes and print any matches
+        for key in self.universes:
+            u = self.universes[key]
+            for k in u:
+                if k.address_mask == addr:
+                    k.device.process_pixel_data(data, k.destIndex, k.pixelCount)

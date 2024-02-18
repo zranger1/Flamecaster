@@ -1,9 +1,8 @@
-"""
-Per-universe dispatcher for incoming data.  Handles setting pixels on the appropriate devices
-"""
+from ArtnetUtils import artnet_to_int
+from utilities import *
 
 
-class UniverseDeviceRecord:
+class UniverseFragment:
     """
     Data for each pixel segment on each device that cares about a given universe
     Contains:
@@ -13,16 +12,23 @@ class UniverseDeviceRecord:
     pixelCount - number of pixels to be copied
     """
     device = None
-    startIndex = 0
+    address_mask = 0
+    sourceIndex = 0
     destIndex = 0
-    count = 0
+    pixelCount = 0
 
-class Universes:
-    """
-    id - Universe number
-    deviceList - list of records describing which pixels go where on what device...
-    TODO - seriously, document this better!
-    """
-    id = -1
-    deviceList = []
+    def __init__(self, device, record):
+        self.device = device
+        net = getParam(record, "net", 0)
+        subnet = getParam(record, "subnet", 0)
+        universe = getParam(record, "universe", 0)
+        self.address_mask = artnet_to_int(net, subnet, universe)
+        self.sourceIndex = getParam(record, "sourceIndex", 0)
+        self.destIndex = getParam(record, "destIndex", 0)
+        self.pixelCount = getParam(record, "pixelCount", 0)
 
+    def __str__(self):
+        return ("UniverseFragment: device: " + str(self.device.name) +
+                " address_mask: " + str(self.address_mask) + " sourceIndex: " +
+                str(self.sourceIndex) + " destIndex: " + str(self.destIndex) +
+                " pixelCount: " + str(self.pixelCount))

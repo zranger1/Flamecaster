@@ -1,13 +1,21 @@
+import logging
+from ArtnetProxy import ArtnetProxy
 
-from sacnproxy import SacnProxy
 
-
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print('Hi from Main')
+    print("Flamethrower Artnet Router for Pixelblaze v.0.0.1")
 
-    mirror = SacnProxy("127.0.0.1", "192.168.1.18")
+    logging.basicConfig(level=logging.DEBUG)
+    mirror = ArtnetProxy()
+    try:
+        mirror.run()
 
+    except KeyboardInterrupt:
+        mirror.stop()
+        print("Flamethrower terminated by keyboard interrupt")
 
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    except Exception as blarf:
+        mirror.stop()
+        template = "Flamethrower terminated by unexpected exception. Type: {0},  Args:\n{1!r}"
+        message = template.format(type(blarf).__name__, blarf.args)
+        logging.error(message)

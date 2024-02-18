@@ -3,9 +3,10 @@ Handles loading and writing parameters from the config file
 """
 import json
 import sys
-import DisplayDevice
-import Universe
+import logging
 
+from DisplayDevice import DisplayDevice
+from Universe import *
 
 
 class ConfigParser:
@@ -13,57 +14,44 @@ class ConfigParser:
     # TODO - do we need this?  What does it need to do?
     fileName = "./config/defaults.conf"
 
-    def buildDeviceList(self,config) :
-        deviceList = []
+    deviceList = dict()
+    universes = dict()
+    systemSettings = dict()
+
+    def parseDeviceInfo(self, config):
 
         # process our list of Pixelblazes
-        devices = self.getParam(config,"devices")
+        devices = getParam(config, "devices")
         if devices is None:
-            print("Error: No output devices found in config file.")
+            logging.error("Error: No output devices found in config file.")
             exit(-1)
 
-        # parse device record and add to hardware device list
-        for record in devices :
-            dev = DisplayDevice(record)
-            deviceList.append(dev)
+            # parse device record and add to hardware device list
+        for key in devices:
+            dev = DisplayDevice(getParam(devices, key))
+            self.deviceList[key] = dev
 
-            # TODO - do something about universe data here.  It needs to be added to the global
-            # TODO - list of universes we're interested in, along with pointers to device and pixel data
-            # TODO - read setup data, create and run thread for each pb so
-            # TODO - connections can come and go without interfering with each other
-            # TODO - we probably need to change the library to allow pb object creation without
-            # TODO - automatic open.
+            self.getDeviceUniverses(dev, devices[key])
 
-        return deviceList
-
-
-    def getDeviceUniverses(self,deviceConfig) :
-        data = self.getParam(deviceConfig,"data")
-        if data is None :
-            return None;
-
-        universeFrags = dict();
-
-        for record in data :
-            print(record)
-
-        return universeFrags;
-
-    def keyExists(self, data, keyName):
+    def getDeviceUniverses(self, device, config):
         """
-        Returns True if key exists in dictionary, False otherwise
+        :param device: DisplayDevice object for this device
+        :param config: dictionary containing universe info for the given device
         """
-        return keyName in data.data
+        # get key to universe fragments for this device
+        data = getParam(config, "data")
+        if data is None:
+            return None
 
-    def getParam(self, config, keyName, defaultValue=None) :
-        """
-        Safe value retriever for config data.  Returns the value of the
-        specified key if it exists in the configuration JSON blob,
-        whatever is in the defaultValue otherwise.
-        """
-        return config.get(keyName, defaultValue)
+        for key in data:
+            fragment = UniverseFragment(device, getParam(data, key))
 
-    def load(self,fileName):
+            if keyExists(self.universes, fragment.address_mask):
+                self.universes[fragment.address_mask].append(fragment)
+            else:
+                self.universes[fragment.address_mask] = [fragment]
+
+    def load(self, fileName):
         """
         read, parse and validate configuration data
         """
@@ -74,12 +62,19 @@ class ConfigParser:
         data = json.load(f)
         f.close()
 
-        # TODO - if data is empty, provide appropriate defaults
+        # TODO - if data is empty, provide appropriate defaults and grab what
+        # TODO - config information we can from Pixelblazes
         # TODO - for now, just exit
         if data is None:
-            print("Config.conf not found.  Using settings in defaults.conf")
+            logging.error("Config.conf not found. Exiting")
             sys.exit()
 
-        return data
+        self.systemSettings = getParam(data, "system")
+        if self.systemSettings is None:
+            # TODO - actually could provide reasonable defaults for these settings
+            logging.error("Error: System settings not found in config file.")
+            exit(-1)
 
+        self.parseDeviceInfo(data)
 
+        return self.systemSettings, self.deviceList, self.universes

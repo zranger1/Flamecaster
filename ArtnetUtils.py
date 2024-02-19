@@ -8,6 +8,7 @@ ArtnetUtils.py - Provides common functions for byte objects.
 
 2/2024 ZRanger1
 """
+import time
 
 
 def shift_this(number, high_first=True):
@@ -167,3 +168,26 @@ def artnet_to_int(net, subnet, universe):
 
     """
     return int.from_bytes(encode_address_to_bytes(universe, subnet, net), byteorder='little')
+
+
+def keyExists(data, keyName):
+    """
+    Returns True if key exists in dictionary, False otherwise
+    """
+    return keyName in data
+
+
+def getParam(config, keyName, defaultValue=None):
+    """
+    Safe value retriever. Returns the value of the
+    specified key if it exists in the dictionary,
+    whatever is in the defaultValue otherwise.
+    """
+    return config.get(keyName, defaultValue)
+
+
+def time_in_millis() -> int:
+    """
+    Utility Method: Returns last 32 bits of the current time in milliseconds
+    """
+    return int(round(time.time() * 1000)) % 0xFFFFFFFF

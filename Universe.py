@@ -1,5 +1,4 @@
-from ArtnetUtils import artnet_to_int
-from utilities import *
+from ArtnetUtils import *
 
 
 class UniverseFragment:

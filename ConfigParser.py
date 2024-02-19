@@ -28,7 +28,7 @@ class ConfigParser:
 
             # parse device record and add to hardware device list
         for key in devices:
-            dev = DisplayDevice(getParam(devices, key))
+            dev = DisplayDevice(getParam(devices, key),config)
             self.deviceList[key] = dev
 
             self.getDeviceUniverses(dev, devices[key])
@@ -62,18 +62,18 @@ class ConfigParser:
         data = json.load(f)
         f.close()
 
-        # TODO - if data is empty, provide appropriate defaults and grab what
-        # TODO - config information we can from Pixelblazes
-        # TODO - for now, just exit
         if data is None:
             logging.error("Config.conf not found. Exiting")
             sys.exit()
 
-        self.systemSettings = getParam(data, "system")
         if self.systemSettings is None:
-            # TODO - actually could provide reasonable defaults for these settings
-            logging.error("Error: System settings not found in config file.")
-            exit(-1)
+            logging.debug("System settings not found in config file. Using defaults.")
+
+        self.systemSettings = getParam(data, "system")
+        self.systemSettings["maxFps"] = getParam(self.systemSettings, "maxFps", 30)
+        self.systemSettings["statusUpdateIntervalMs"] = getParam(self.systemSettings, "statusUpdateIntervalMs", 3000)
+        self.systemSettings["pixelsPerUniverse"] = getParam(self.systemSettings, "pixelsPerUniverse", 170)
+        self.systemSettings["listenAddress"] = getParam(self.systemSettings, "listenAddress", "127.0.0.1")
 
         self.parseDeviceInfo(data)
 

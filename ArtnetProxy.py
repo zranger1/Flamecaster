@@ -29,10 +29,10 @@
 """
 import json
 import logging
-import time
 
 from ArtnetServer import ArtnetServer
 from ConfigParser import ConfigParser
+from ArtnetUtils import time_in_millis
 
 
 class ArtnetProxy:
@@ -87,28 +87,24 @@ class ArtnetProxy:
     def setThroughputCheckInterval(self, ms):
         self.notify_ms = max(500, ms)  # min interval is 1/2 second, default should be about 3 sec
 
-    @staticmethod
-    def time_millis():
-        return int(round(time.time() * 1000))
-
     def calc_frame_stats(self):
         self.FrameCount += 1
 
-        t = self.time_millis() - self.notifyTimer
+        t = time_in_millis() - self.notifyTimer
         if t >= self.notify_ms:
             t = 1000 * self.FrameCount / self.notify_ms
             if self.show_fps:
                 logging.info("Incoming fps: %d" % t)
             self.FrameCount = 0
 
-            self.notifyTimer = self.time_millis()
+            self.notifyTimer = time_in_millis()
         pass
 
     def run(self):
         # bind multicast receiver to specific IP address
         logging.debug("Binding to %s" % self.config['listenAddress'])
         self.isRunning = True
-        self.notifyTimer = self.time_millis()
+        self.notifyTimer = time_in_millis()
 
         # loop 'till we're done, listening for packets and forwarding the pixel data
         # to Pixelblazes
@@ -117,24 +113,28 @@ class ArtnetProxy:
         self.receiver.register_listener(self.main_dispatcher)
 
         while self.isRunning:
-            # TODO - add UI loop in here somewhere...
-            # sleep between UI updates (if the UI existed)
-
             try:
-                time.sleep(0.5)
+                # call send_frame on each device in deviceList
+                for key in self.deviceList:
+                    self.deviceList[key].sendMethod()
+
             except KeyboardInterrupt:
                 break
 
-        self.stop()
+        self.shutdown()
 
-    def stop(self):
+    def shutdown(self):
         # stop all devices in DeviceList
         for key in self.deviceList:
+            logging.debug("Stopping device: " + self.deviceList[key].name)
             self.deviceList[key].stop()
 
         # stop listening for Artnet packets
         logging.info("Stopping Artnet receiver")
         del self.receiver
+
+    def stop(self):
+        self.isRunning = False
 
     def main_dispatcher(self, addr, data):
         """Test function, receives data from server callback."""

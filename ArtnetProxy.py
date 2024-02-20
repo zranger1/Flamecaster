@@ -29,6 +29,8 @@
 """
 import json
 import logging
+from multiprocessing import Queue
+from multiprocessing import Event
 
 from ArtnetServer import ArtnetServer
 from ConfigParser import ConfigParser
@@ -37,10 +39,10 @@ from ArtnetUtils import time_in_millis
 
 class ArtnetProxy:
     """
-    Listens for data and forwards it to one or more Pixelblazes.
+    Listens for data and forwards it to one or more Pixelblazes.  Designed to run in its own
+    process, and communicate with the main process via Queues.
     """
     receiver = None
-    isRunning = False
     pixelsPerUniverse = 170
     pixelCount = 0
     dataReady = False
@@ -57,8 +59,12 @@ class ArtnetProxy:
 
     pixels = []
 
-    def __init__(self):
+    def __init__(self, cmdQueue: Queue, dataQueue: Queue, exit_flag: Event):
         logging.basicConfig(level=logging.DEBUG)
+
+        self.cmdQueue = cmdQueue
+        self.dataQueue = dataQueue
+        self.exit_flag = exit_flag
 
         jim = ConfigParser()
         self.config, self.deviceList, self.universes = jim.load(self.configFileName)
@@ -75,53 +81,38 @@ class ArtnetProxy:
             for k in u:
                 print(k)
 
-    def debugPrintFps(self):
-        self.show_fps = True
-
     def setPixelsPerUniverse(self, pix):
         self.pixelsPerUniverse = max(1, min(pix, 170))  # clamp to 1-170 pixels
-
-    def setMaxOutputFps(self, fps):
-        self.delay = 1 / fps
 
     def setThroughputCheckInterval(self, ms):
         self.notify_ms = max(500, ms)  # min interval is 1/2 second, default should be about 3 sec
 
-    def calc_frame_stats(self):
-        self.FrameCount += 1
-
-        t = time_in_millis() - self.notifyTimer
-        if t >= self.notify_ms:
-            t = 1000 * self.FrameCount / self.notify_ms
-            if self.show_fps:
-                logging.info("Incoming fps: %d" % t)
-            self.FrameCount = 0
-
-            self.notifyTimer = time_in_millis()
-        pass
-
     def run(self):
         # bind multicast receiver to specific IP address
         logging.debug("Binding to %s" % self.config['listenAddress'])
-        self.isRunning = True
         self.notifyTimer = time_in_millis()
 
         # loop 'till we're done, listening for packets and forwarding the pixel data
         # to Pixelblazes
+        self.receiver = ArtnetServer(self.main_dispatcher)
 
-        self.receiver = ArtnetServer()
-        self.receiver.register_listener(self.main_dispatcher)
-
-        while self.isRunning:
-            try:
-                # call send_frame on each device in deviceList
+        # send current data frame to each Pixelblaze
+        try:
+            while not self.exit_flag.is_set():
                 for key in self.deviceList:
                     self.deviceList[key].sendMethod()
 
-            except KeyboardInterrupt:
-                break
+        except KeyboardInterrupt:
+            # logging.info("ArtnetProxy: caught keyboard interrupt")
+            pass
 
+        except Exception as e:
+            logging.error("ArtnetProxy: hit exceptional exception handler" + str(e))
+            pass
+
+        self.exit_flag.set()
         self.shutdown()
+
 
     def shutdown(self):
         # stop all devices in DeviceList
@@ -132,9 +123,6 @@ class ArtnetProxy:
         # stop listening for Artnet packets
         logging.info("Stopping Artnet receiver")
         del self.receiver
-
-    def stop(self):
-        self.isRunning = False
 
     def main_dispatcher(self, addr, data):
         """Test function, receives data from server callback."""

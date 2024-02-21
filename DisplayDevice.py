@@ -9,11 +9,12 @@ from threading import Thread
 
 import numpy as np
 
-from pixelblaze import *
 from ArtnetUtils import *
+from pixelblaze import *
 
 
 class DisplayDevice:
+    parent = None
     pb = None
     ip = None
     thread = None
@@ -41,7 +42,7 @@ class DisplayDevice:
         # both the device and the system configuration can specify a maxFps.
         # We take the lowest of the two.
         self.maxFps = getParam(device, 'maxFps', 1000)
-        self.maxFps = min(config["system"]["maxFps"], self.maxFps)
+        self.maxFps = min(config["maxFps"], self.maxFps)
         self.ms_per_frame = 1000 / self.maxFps
 
         logging.debug("DisplayDevice: %s maxFps: %d (%d ms/frame)" % (self.name, self.maxFps, self.ms_per_frame))
@@ -118,6 +119,22 @@ class DisplayDevice:
 
             self.frame_timer = time_in_millis()
 
+    def getStatusString(self, et):
+        """
+        Return a status string for the display device
+        :param et: elapsed time in seconds
+        :return: status string
+        """
+        return "X%s in: %d out: %d" % (self.name, self.packets_in / et, self.packets_out / et)
+
+    def resetCounters(self):
+        """
+        Reset the packet counters for this display device
+        """
+        self.packets_in = 0
+        self.packets_out = 0
+        self.pixelsReceived = 0
+
     def run_thread(self):
         """
         Create Pixelblaze device object, and attempt to open it and
@@ -134,34 +151,23 @@ class DisplayDevice:
         # the thread's job here is just to maintain the websocket connection
         # and eat any incoming messages.  We're ignoring them for now, but
         # we could use them to monitor the health of the Pixelblaze later.
-
-        updateTimer = time_in_millis()
         while self.run_flag.is_set():
             try:
                 self.pb.maintain_connection()
-
-                # display current in and out fps every 5 seconds
-                elapsedTime = time_in_millis() - updateTimer
-                if elapsedTime > 5000:
-                    t = elapsedTime / 1000
-                    logging.debug("DisplayDevice: %s in: %d out: %d" %
-                                  (self.name, self.packets_in / t, self.packets_out / t))
-                    self.packets_in = 0
-                    self.packets_out = 0
-                    self.pixelsReceived = 0
-                    updateTimer = time_in_millis()
 
             except Exception as e:
                 logging.debug("DisplayDevice: %s (%s) exception: %s" % (self.name, self.ip, str(e)))
                 pass
 
     def stop(self):
-        logging.info("Stopping Pixelblaze: " + self.name)
+        # logging.debug("Stopping Pixelblaze: " + self.name)
         self.run_flag.clear()
         if self.pb is not None:
             self.pb.close()
         self.pb = None
 
     def __str__(self):
-        return "DisplayDevice: name: " + self.name + " ip: " + self.ip + " pixelCount: " + str(
-            self.pixelCount) + " maxFps: " + str(self.maxFps)
+        return ("DisplayDevice: name: " + self.name + " ip: " + self.ip + " pixelCount: " +
+                str(self.pixelCount) + " maxFps: " + str(self.maxFps) + " pixelsReceived: " +
+                str(self.pixelsReceived) + " packets_in: " + str(self.packets_in) + " packets_out: " +
+                str(self.packets_out) + " run_flag: " + str(self.run_flag.is_set()))

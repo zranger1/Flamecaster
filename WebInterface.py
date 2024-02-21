@@ -1,12 +1,18 @@
 import remi.gui as gui
 from remi import start, App
 
+
 class WebInterface(App):
     def __init__(self, *args):
         super(WebInterface, self).__init__(*args)
 
+        # get our IPC queues and Events from the main process
+        self.cmdQueue = self.kwargs.pop('commandQueue')
+        self.dataQueue = self.kwargs.pop('dataQueue')
+        self.exit_flag = self.kwargs.pop('exitFlag')
+
     def main(self):
-        container = gui.VBox(width=120, height=100)
+        container = gui.VBox(width=720, height=1480)
         self.lbl = gui.Label('Hello world!')
         self.bt = gui.Button('Press me!')
 

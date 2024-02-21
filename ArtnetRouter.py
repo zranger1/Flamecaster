@@ -29,6 +29,7 @@
 """
 import json
 import logging
+import time
 from multiprocessing import Queue
 from multiprocessing import Event
 
@@ -37,7 +38,7 @@ from ConfigParser import ConfigParser
 from ArtnetUtils import time_in_millis
 
 
-class ArtnetProxy:
+class ArtnetRouter:
     """
     Listens for data and forwards it to one or more Pixelblazes.  Designed to run in its own
     process, and communicate with the main process via Queues.
@@ -81,13 +82,6 @@ class ArtnetProxy:
             for k in u:
                 print(k)
 
-    def setPixelsPerUniverse(self, pix):
-        self.pixelsPerUniverse = max(1, min(pix, 170))  # clamp to 1-170 pixels
-
-    def setThroughputCheckInterval(self, ms):
-        self.notify_ms = max(500, ms)  # min interval is 1/2 second, default should be about 3 sec
-
-    def run(self):
         # bind multicast receiver to specific IP address
         logging.debug("Binding to %s" % self.config['listenAddress'])
         self.notifyTimer = time_in_millis()
@@ -96,23 +90,43 @@ class ArtnetProxy:
         # to Pixelblazes
         self.receiver = ArtnetServer(self.main_dispatcher)
 
-        # send current data frame to each Pixelblaze
-        try:
-            while not self.exit_flag.is_set():
+        # send current data frame to each Pixelblaze and periodically
+        # update the UI with status information
+
+        while not self.exit_flag.is_set():
+            try:
+                elapsedTime = (time_in_millis() - self.notifyTimer)
+                updateUI = (elapsedTime >= self.config['statusUpdateIntervalMs'])
+                etSeconds = elapsedTime / 1000
+
                 for key in self.deviceList:
-                    self.deviceList[key].sendMethod()
+                    dd = self.deviceList[key]
+                    dd.sendMethod()
+                    if updateUI:
+                        self.dataQueue.put(dd.getStatusString(etSeconds))
+                        dd.resetCounters()
 
-        except KeyboardInterrupt:
-            # logging.info("ArtnetProxy: caught keyboard interrupt")
-            pass
+                if updateUI:
+                    self.notifyTimer = time_in_millis()
 
-        except Exception as e:
-            logging.error("ArtnetProxy: hit exceptional exception handler" + str(e))
-            pass
+            except KeyboardInterrupt:
+                # logging.info("ArtnetProxy: caught keyboard interrupt")
+                break
+
+            except Exception as e:
+                logging.error("ArtnetRouter: Exceptional exception" + str(e))
+                logging.error("Pixelblaze probably disconnected or stalled.")
+                logging.error("Sleeping it off.  Will attempt reconnect shortly.")
+                time.sleep(5)
 
         self.exit_flag.set()
         self.shutdown()
 
+    def setPixelsPerUniverse(self, pix):
+        self.pixelsPerUniverse = max(1, min(pix, 170))  # clamp to 1-170 pixels
+
+    def setThroughputCheckInterval(self, ms):
+        self.notify_ms = max(500, ms)  # min interval is 1/2 second, default should be about 3 sec
 
     def shutdown(self):
         # stop all devices in DeviceList
@@ -121,7 +135,7 @@ class ArtnetProxy:
             self.deviceList[key].stop()
 
         # stop listening for Artnet packets
-        logging.info("Stopping Artnet receiver")
+        logging.debug("Stopping Artnet Receiver")
         del self.receiver
 
     def main_dispatcher(self, addr, data):

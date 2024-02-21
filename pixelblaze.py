@@ -97,13 +97,13 @@ class Pixelblaze:
         """
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, tb):
         """Internal class method for resource management.
 
         Args:
             exc_type (_type_): As per Python standard.
             exc_value (_type_): As per Python standard.
-            traceback (_type_): As per Python standard.
+            tb (_type_): As per Python standard.
         """
         # Make sure we clean up after ourselves.
         if self is not None:
@@ -258,7 +258,6 @@ class Pixelblaze:
                 self.close()
                 self.open()
 
-
         except Exception as e:
             self.connectionBroken = True
             traceback.print_stack()
@@ -291,6 +290,7 @@ class Pixelblaze:
         except Exception as e:
             self.connectionBroken = True
             logging.debug("Super Exceptional Exception in connection maintenance for " + self.ipAddress)
+            logging.debug(e)
             raise
 
     def wsSendString(self, command: str):
@@ -416,6 +416,7 @@ class Pixelblaze:
                     else:
                         frameFlag = self.FrameTypes.frameMiddle
 
+                    # noinspection PyTypeChecker
                     frameHeader[1] = frameFlag.value
 
                     # Send the packet.
@@ -543,7 +544,7 @@ class Pixelblaze:
         """
         return self.latestSequencer.get('activeProgram').get('activeProgramId', "")
 
-    def sendPatternToRenderer(self, bytecode: bytes, controls: dict = {}):
+    def sendPatternToRenderer(self, bytecode: bytes, controls=None):
         """Sends a blob of bytecode and a JSON dictionary of UI controls to the Renderer.
            Mimics the actions of the webUI code editor.
 
@@ -552,6 +553,8 @@ class Pixelblaze:
             controls (dict, optional): a dictionary of UI controls exported by the pattern, with controlName as
             the key and controlValue as the value. Defaults to {}.
         """
+        if controls is None:
+            controls = {}
         self.wsSendJson({"pause": True, "setCode": {"size": len(bytecode)}}, expectedResponse="ack")
         self.wsSendBinary(self.MessageTypes.putByteCode, bytecode, expectedResponse="ack")
         self.wsSendJson({"setControls": controls}, expectedResponse="ack")

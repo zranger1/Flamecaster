@@ -11,7 +11,6 @@ from Universe import *
 
 class ConfigParser:
     # this file holds the default configuration
-    # TODO - do we need this?  What does it need to do?
     fileName = "./config/defaults.conf"
 
     deviceList = dict()
@@ -28,7 +27,7 @@ class ConfigParser:
 
             # parse device record and add to hardware device list
         for key in devices:
-            dev = DisplayDevice(getParam(devices, key),config)
+            dev = DisplayDevice(getParam(devices, key), self.systemSettings)
             self.deviceList[key] = dev
 
             self.getDeviceUniverses(dev, devices[key])

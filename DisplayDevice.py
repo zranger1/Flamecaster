@@ -121,11 +121,13 @@ class DisplayDevice:
 
     def getStatusString(self, et):
         """
-        Return a status string for the display device
+        Return a JSON-ized status string for the display device
         :param et: elapsed time in seconds
         :return: status string
         """
-        return "X%s in: %d out: %d" % (self.name, self.packets_in / et, self.packets_out / et)
+
+        return "{\"name\":\"" + self.name + "\",\"inPps\":" + str(self.packets_in / et) + ",\"outFps\":" + str(
+            self.packets_out / et) + "}"
 
     def resetCounters(self):
         """

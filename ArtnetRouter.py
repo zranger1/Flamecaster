@@ -35,7 +35,7 @@ from multiprocessing import Event
 
 from ArtnetServer import ArtnetServer
 from ConfigParser import ConfigParser
-from ArtnetUtils import time_in_millis
+from ArtnetUtils import time_in_millis, decode_address_int
 
 
 class ArtnetRouter:
@@ -60,11 +60,12 @@ class ArtnetRouter:
 
     pixels = []
 
-    def __init__(self, cmdQueue: Queue, dataQueue: Queue, exit_flag: Event):
+    def __init__(self, cmdQueue: Queue, dataQueue: Queue, ui_is_active: Event, exit_flag: Event):
         logging.basicConfig(level=logging.DEBUG)
 
         self.cmdQueue = cmdQueue
         self.dataQueue = dataQueue
+        self.ui_is_active = ui_is_active
         self.exit_flag = exit_flag
 
         jim = ConfigParser()
@@ -91,32 +92,34 @@ class ArtnetRouter:
         self.receiver = ArtnetServer(self.main_dispatcher)
 
         # send current data frame to each Pixelblaze and periodically
-        # update the UI with status information
-
-        while not self.exit_flag.is_set():
+        # send updated status information to the UI queue, where
+        # the WebUI can display it if anybody's watching.
+        while True:
             try:
+                if self.exit_flag.is_set():
+                    break
                 elapsedTime = (time_in_millis() - self.notifyTimer)
                 updateUI = (elapsedTime >= self.config['statusUpdateIntervalMs'])
-                etSeconds = elapsedTime / 1000
 
                 for key in self.deviceList:
                     dd = self.deviceList[key]
                     dd.sendMethod()
                     if updateUI:
-                        self.dataQueue.put(dd.getStatusString(etSeconds))
+                        if ui_is_active.is_set():
+                            self.dataQueue.put(dd.getStatusString(elapsedTime / 1000))
                         dd.resetCounters()
 
                 if updateUI:
                     self.notifyTimer = time_in_millis()
 
             except KeyboardInterrupt:
-                # logging.info("ArtnetProxy: caught keyboard interrupt")
+                # this throws us out of the loop and into the shutdown sequence
                 break
 
             except Exception as e:
                 logging.error("ArtnetRouter: Exceptional exception" + str(e))
                 logging.error("Pixelblaze probably disconnected or stalled.")
-                logging.error("Sleeping it off.  Will attempt reconnect shortly.")
+                logging.error("Sleeping it off.  Will attempt to reconnect shortly.")
                 time.sleep(5)
 
         self.exit_flag.set()
@@ -141,7 +144,7 @@ class ArtnetRouter:
     def main_dispatcher(self, addr, data):
         """Test function, receives data from server callback."""
         # universe, subnet, net = decode_address_int(addr)
-        # print("Received data on universe %d, subnet %d, net %d" % (universe, subnet, net))
+        # print("%d, subnet %d, net %d" % (universe, subnet, net))
 
         # test against the universe fragments in universes and print any matches
         for key in self.universes:

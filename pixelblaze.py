@@ -30,7 +30,6 @@ import errno
 import json
 import logging
 import socket
-import traceback
 from enum import Flag, IntEnum
 from typing import Union
 
@@ -260,7 +259,6 @@ class Pixelblaze:
 
         except Exception as e:
             self.connectionBroken = True
-            traceback.print_stack()
             logging.debug(f"wsReceive: unknown exception: {e}")
             raise
 

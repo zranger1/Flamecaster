@@ -1,13 +1,31 @@
+"""
+ FlameCaster Art-Net Router for Pixelblaze
+
+ Receives LED data packets over Art-Net and distributes them via websockets to one
+ or more Pixelblazes
+
+ Uses the REMI library to create its web interface.
+ More information about REMI can be found at: https://github.com/dddomodossola/remi
+
+ Uses a highly modified version of the pixelblaze-client library to communicate with Pixelblazes.
+ More information about pixelblaze-client can be found at: https://github.com/zranger1/pixelblaze-client
+
+ Requires Python 3.10+, and the following libraries from pypl:
+     pixelblaze-client
+     numpy
+     websocket-client
+     remi
+
+ Copyright 2024 ZRanger1
+ Apache 2.0 License - see the github repository for details.
+
+ Version  Date         Author    Comment
+ v0.5.0   02/23/2024   ZRanger1  Initial pre-alpha release
+"""
 import logging
-import time
-from multiprocessing import Process, Queue
-from multiprocessing import Event
-from multiprocessing import Queue
-from typing import Any
+from multiprocessing import Process, Event, Queue
 
 from ArtnetRouter import ArtnetRouter
-
-from remi import start
 from WebInterface import RemiWrapper
 
 cmdQueue = Queue()
@@ -27,7 +45,8 @@ def mirror_process(cmdQueue: Queue, dataQueue: Queue, ui_is_active: Event, exit_
 
 
 def main():
-    print("Flamethrower Artnet Router for Pixelblaze v.0.0.1")
+    print("Flamecaster Artnet Router for Pixelblaze v.0.5.0")
+    print("Copyright 2024 ZRanger1 - Apache 2.0 License")
     logging.basicConfig(level=logging.DEBUG)
 
     exit_flag.clear()
@@ -51,7 +70,7 @@ def main():
         logging.error(message)
 
     proc1.join()
-    print("Flamethrower shutting down. Thank you for playing!")
+    print("Flamecaster shutting down. Thank you for playing!")
 
 
 if __name__ == '__main__':

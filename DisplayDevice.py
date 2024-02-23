@@ -63,11 +63,12 @@ class DisplayDevice:
         self.frame_timer = 0
         thread.start()
 
-    def process_pixel_data(self, dmxPixels: bytearray, destPixel: int, count: int):
+    def process_pixel_data(self, dmxPixels: bytearray, startChannel: int,  destPixel: int, count: int):
         """
         Pack RGB color data into a single 32-bit fixed point float for
         compact transmission to a Pixelblaze
         :param dmxPixels: byte array of RGB pixels received from Artnet source
+        :param startChannel: starting channel in the Artnet packet
         :param destPixel: index of first pixel in destination array
         :param count: number of pixels to process
         """
@@ -77,7 +78,7 @@ class DisplayDevice:
         self.pixelsReceived += count
 
         # copy the pixel data into the display device's pixel buffer
-        index = 0
+        index = 3 * startChannel
         pixNum = destPixel
 
         # Pack the RGB color data into a single 32-bit fixed point float for compact transmission to a Pixelblaze.

@@ -12,7 +12,7 @@ class UniverseFragment:
     """
     device = None
     address_mask = 0
-    sourceIndex = 0
+    startChannel = 0
     destIndex = 0
     pixelCount = 0
 
@@ -22,12 +22,12 @@ class UniverseFragment:
         subnet = getParam(record, "subnet", 0)
         universe = getParam(record, "universe", 0)
         self.address_mask = artnet_to_int(net, subnet, universe)
-        self.sourceIndex = getParam(record, "sourceIndex", 0)
+        self.startChannel = getParam(record, "startChannel", 0)
         self.destIndex = getParam(record, "destIndex", 0)
         self.pixelCount = getParam(record, "pixelCount", 0)
 
     def __str__(self):
         return ("UniverseFragment: device: " + str(self.device.name) +
-                " address_mask: " + str(self.address_mask) + " sourceIndex: " +
-                str(self.sourceIndex) + " destIndex: " + str(self.destIndex) +
+                " address_mask: " + str(self.address_mask) + " Start channel: " +
+                str(self.startChannel) + " destIndex: " + str(self.destIndex) +
                 " pixelCount: " + str(self.pixelCount))

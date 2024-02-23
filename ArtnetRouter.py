@@ -1,32 +1,3 @@
-"""
- Flamethrower for Pixelblaze
-
- sACN/Artnet router:  Receives LED data packets and distributes
- them via websockets to one or more Pixelblazes
- 
- Requires Python 3.10+, pixelblaze-client and sacn
- 
- Copyright 2023 ZRanger1
-
- Permission is hereby granted, free of charge, to any person obtaining a copy of this
- software and associated documentation files (the "Software"), to deal in the Software
- without restriction, including without limitation the rights to use, copy, modify, merge,
- publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
- to whom the Software is furnished to do so, subject to the following conditions:
-
- The above copyright notice and this permission notice shall be included in all copies or
- substantial portions of the Software.
-
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
- BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE
- AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
- CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- THE SOFTWARE.
-
- Version  Date         Author    Comment
- v0.5.0   03/30/2023   ZRanger1  Initial version
-"""
 import json
 import logging
 import time
@@ -35,7 +6,7 @@ from multiprocessing import Event
 
 from ArtnetServer import ArtnetServer
 from ConfigParser import ConfigParser
-from ArtnetUtils import time_in_millis, decode_address_int
+from ArtnetUtils import time_in_millis
 
 
 class ArtnetRouter:
@@ -151,4 +122,4 @@ class ArtnetRouter:
             u = self.universes[key]
             for k in u:
                 if k.address_mask == addr:
-                    k.device.process_pixel_data(data, k.destIndex, k.pixelCount)
+                    k.device.process_pixel_data(data, k.startChannel, k.destIndex, k.pixelCount)

@@ -2,8 +2,8 @@
 Handles loading and writing parameters from the config file
 """
 import json
-import sys
 import logging
+import sys
 
 from DisplayDevice import DisplayDevice
 from Universe import *

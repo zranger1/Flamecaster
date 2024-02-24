@@ -41,21 +41,19 @@ class ArtnetRouter:
 
         jim = ConfigParser()
         self.config, self.deviceList, self.universes = jim.load(self.configFileName)
-        print(json.dumps(self.config, indent=4))
 
-        # print the value for each key in deviceList
-        for key in self.deviceList:
-            print(key + " : " + str(self.deviceList[key]))
+        # enqueue the system config data for the WebUI
+        sys = "{\"system\":"+ json.dumps(self.config, indent=4)+"}"
+        self.dataQueue.put(sys)
 
-        # print the value for each key in universes
-        for key in self.universes:
-            u = self.universes[key]
-            # print each key and value
-            for k in u:
-                print(k)
+        # enqueue the universe data for the WebUI
+        self.dataQueue.put(self.getUniverseData())
+
+        # enqueue the device data for the WebUI
+        self.dataQueue.put(self.getDeviceData(1))
 
         # bind multicast receiver to specific IP address
-        logging.debug("Binding to %s" % self.config['listenAddress'])
+        logging.debug("Binding to listenAddress %s" % self.config['listenAddress'])
         self.notifyTimer = time_in_millis()
 
         # loop 'till we're done, listening for packets and forwarding the pixel data
@@ -123,3 +121,35 @@ class ArtnetRouter:
             for k in u:
                 if k.address_mask == addr:
                     k.device.process_pixel_data(data, k.startChannel, k.destIndex, k.pixelCount)
+
+    # use each universe's str() method to convert the printable data in self.universes into a JSON string
+    # by calling the __str__ method of each UniverseFragment in the list, and concatenating the results
+    def getUniverseData(self):
+        n = 0
+        result = "{\"universes\":{"
+        for key in self.universes:
+            u = self.universes[key]
+            for k in u:
+                result += "\"" + n.__str__() + "\":" + k.__str__() + ","
+                n += 1
+        # drop the trailing comma
+        result = result[:-1]
+        result += "}}"
+        return result
+
+
+    # convert the printable data in self.deviceList to a JSON string and return it,
+    # by calling each device's getStatusString method and concatenating the results
+    def getDeviceData(self, et):
+        n = 0
+        result = "{\"devices\":{"
+        for key in self.deviceList:
+            result += "\"" + n.__str__() + "\":" + self.deviceList[key].getStatusString(et) + ","
+            n += 1
+
+        # drop the trailing comma
+        result = result[:-1]
+        result += "}}"
+        return result
+
+

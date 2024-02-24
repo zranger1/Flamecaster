@@ -24,9 +24,12 @@ class RemiWrapper:
         start(WebInterface, port=8081, start_browser=False, update_interval=0.1, debug=False)
 
 
+# noinspection PyUnusedLocal
 class WebInterface(App):
     table = None
     devices = {}
+    systemConfig = {}
+    universes = {}
     baseContainer = None
     statusPanel = None
     systemPanel = None
@@ -41,9 +44,20 @@ class WebInterface(App):
         if not ui_is_active.is_set():
             ui_is_active.set()
         if not dataQueue.empty():
-            # get the JSON status string from the queue
-            status = json.loads(dataQueue.get())
-            self.devices[status['name']] = status
+            # get the JSON status strings from the queue
+            msg = json.loads(dataQueue.get())
+            # if top level key is "name", it's a device status message
+            if 'name' in msg:
+                # update the device dictionary with the new status
+                self.devices[msg['name']] = msg
+            elif 'system' in msg:
+                # print("System Config ", msg)
+                self.systemConfig = msg['system']
+            elif 'universes' in msg:
+                # print("Universes ", msg)
+                self.universes = msg['universes']
+            elif 'devices' in msg:
+                print("Device Dump ", msg)
 
             # reconfigure the table for the updated device list
             self.table.set_row_count(1 + len(self.devices))
@@ -202,7 +216,7 @@ class WebInterface(App):
         # Define the listeners for GUI elements which are contained in the content Widgets
         # We can't define it in the Widget classes because the listeners wouldn't have access to other GUI
         # elements outside the Widget
-        # self.systemPanel.children['btnsend'].onclick.do(self.send_text_to_screen1)
+        # self.systemPanel.children['btnSend'].onclick.do(self.send_text_to_screen1)
 
         # Add the contentContainer to the baseContainer
         baseContainer.append(contentContainer, 'contentContainer')

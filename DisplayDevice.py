@@ -63,7 +63,7 @@ class DisplayDevice:
         self.frame_timer = 0
         thread.start()
 
-    def process_pixel_data(self, dmxPixels: bytearray, startChannel: int,  destPixel: int, count: int):
+    def process_pixel_data(self, dmxPixels: bytearray, startChannel: int, destPixel: int, count: int):
         """
         Pack RGB color data into a single 32-bit fixed point float for
         compact transmission to a Pixelblaze
@@ -126,9 +126,13 @@ class DisplayDevice:
         :param et: elapsed time in seconds
         :return: status string
         """
+        if self.pb is None:
+            is_connected = "false"
+        else:
+            is_connected = "true" if self.pb.is_connected() else "false"
 
-        return "{\"name\":\"" + self.name + "\",\"inPps\":" + str(self.packets_in / et) + ",\"outFps\":" + str(
-            self.packets_out / et) + "}"
+        return json.dumps({"name": self.name, "inPps": self.packets_in / et, "outFps": self.packets_out / et,
+                                      "ip": self.ip, "maxFps": self.maxFps, "connected": is_connected})
 
     def resetCounters(self):
         """
@@ -148,8 +152,8 @@ class DisplayDevice:
         self.pb = Pixelblaze(self.ip)
         self.pb.setSendPreviewFrames(False)
 
-        logging.debug("DisplayDevice: %s (%s) created" % (self.name, self.ip))
-        logging.debug("Connection is %s" % ("open" if self.pb.is_connected() else "not open"))
+        logging.debug("Pixelblaze: %s (%s) initializing." % (self.name, self.ip))
+        logging.debug("Connection is %s" % ("open" if self.pb.is_connected() else "NOT open"))
 
         # the thread's job here is just to maintain the websocket connection
         # and eat any incoming messages.  We're ignoring them for now, but
@@ -159,11 +163,10 @@ class DisplayDevice:
                 self.pb.maintain_connection()
 
             except Exception as e:
-                logging.debug("DisplayDevice: %s (%s) exception: %s" % (self.name, self.ip, str(e)))
+                logging.debug("Pixelblaze: %s (%s) exception: %s" % (self.name, self.ip, str(e)))
                 pass
 
     def stop(self):
-        # logging.debug("Stopping Pixelblaze: " + self.name)
         self.run_flag.clear()
         if self.pb is not None:
             self.pb.close()

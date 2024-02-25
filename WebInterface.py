@@ -60,7 +60,7 @@ class WebInterface(App):
                 print("Device Dump ", msg)
 
             # reconfigure the table for the updated device list
-            self.table.set_row_count(1 + len(self.devices))
+            self.table.set_row_count(2 + len(self.devices))
             self.fill_table()
             self.table.redraw()
 
@@ -76,8 +76,8 @@ class WebInterface(App):
         baseContainer.attributes['editor_constructor'] = "()"
         baseContainer.style['position'] = "absolute"
         baseContainer.style['overflow'] = "auto"
-        baseContainer.style['left'] = "100px"
-        baseContainer.style['top'] = "120px"
+        baseContainer.style['left'] = "0px"
+        baseContainer.style['top'] = "0px"
         baseContainer.style['margin'] = "0px"
         baseContainer.style['border-style'] = "solid"
         baseContainer.style['width'] = "670px"
@@ -230,10 +230,18 @@ class WebInterface(App):
     def fill_table(self):
         # add information from the devices dictionary to the table
         # print(self.devices)
+
         for i, key in enumerate(self.devices):
+            for n in range(5):
+                self.table.item_at(i, n).style['height'] = "30px"
+
+            # the first row is reserved for the column headers
+            i += 1
             self.table.item_at(i, 0).set_text(key)
-            self.table.item_at(i, 1).set_text(str(self.devices[key]['inPps']))
-            self.table.item_at(i, 2).set_text(str(self.devices[key]['outFps']))
+            self.table.item_at(i, 1).set_text(str(self.devices[key]['ip']))
+            self.table.item_at(i, 2).set_text(str(self.devices[key]['inPps']))
+            self.table.item_at(i, 3).set_text(str(self.devices[key]['outFps']))
+            self.table.item_at(i, 4).set_text(self.devices[key]['connected'])
 
     def remove_current_content(self):
         # remove the current content from the contentContainer

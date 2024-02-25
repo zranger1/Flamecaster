@@ -72,7 +72,7 @@ class ConfigParser:
         self.systemSettings["maxFps"] = getParam(self.systemSettings, "maxFps", 30)
         self.systemSettings["statusUpdateIntervalMs"] = getParam(self.systemSettings, "statusUpdateIntervalMs", 3000)
         self.systemSettings["pixelsPerUniverse"] = getParam(self.systemSettings, "pixelsPerUniverse", 170)
-        self.systemSettings["listenAddress"] = getParam(self.systemSettings, "listenAddress", "127.0.0.1")
+        self.systemSettings["ipArtnet"] = getParam(self.systemSettings, "ipArtnet", "127.0.0.1")
 
         self.parseDeviceInfo(data)
 

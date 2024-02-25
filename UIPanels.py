@@ -14,7 +14,16 @@ class StatusContainer(Container):
         self.style['display'] = "block"
         self.style['height'] = "480px"
         title = Label("Status")
-        table = TableWidget(4, 3, True, False, width=427, height=480)
+        table = TableWidget(4, 5, True, False, width=427, height=480)
+
+        for n in range(5):
+            table.item_at(0, n).style['height'] = "30px"
+
+        table.item_at(0, 0).set_text("Name")
+        table.item_at(0, 1).set_text("IP Address")
+        table.item_at(0, 2).set_text("Packets/Sec in")
+        table.item_at(0, 3).set_text("FPS out")
+        table.item_at(0, 4).set_text("Connected")
         self.append(title, 'title')
         self.append(table, 'status_table')
 

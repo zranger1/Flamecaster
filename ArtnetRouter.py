@@ -21,8 +21,7 @@ class ArtnetRouter:
     notifyTimer = 0
     FrameCount = 0
     delay = 0.033333  # default to 30 fps outgoing limit
-    notify_ms = 3000  # throughput check every <notify_ms> milliseconds
-    show_fps = False
+    notify_ms = 3000  # status update to UI/log every 3 seconds by default
     configFileName = "./config/config.conf"
 
     config = None
@@ -53,7 +52,7 @@ class ArtnetRouter:
         self.dataQueue.put(self.getDeviceData(1))
 
         # bind multicast receiver to specific IP address
-        logging.debug("Binding to listenAddress %s" % self.config['listenAddress'])
+        logging.debug("Binding to ipArtnet %s" % self.config['ipArtnet'])
         self.notifyTimer = time_in_millis()
 
         # loop 'till we're done, listening for packets and forwarding the pixel data

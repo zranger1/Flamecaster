@@ -8,10 +8,11 @@ from UIPanels import *
 cmdQueue: Queue
 dataQueue: Queue
 ui_is_active: Event
+configDatabase: dict
 
 
 class RemiWrapper:
-    def __init__(self, cmdQ, dataQ, ui_flag):
+    def __init__(self, cfgDb, cmdQ, dataQ, ui_flag):
         global cmdQueue
         cmdQueue = cmdQ
 
@@ -21,11 +22,14 @@ class RemiWrapper:
         global ui_is_active
         ui_is_active = ui_flag
 
-        start(WebInterface, port=8081, start_browser=False, update_interval=0.1, debug=False)
+        global configDatabase
+        configDatabase = cfgDb
+
+        start(Flamecaster, port=8081, start_browser=False, update_interval=0.1, debug=False)
 
 
 # noinspection PyUnusedLocal
-class WebInterface(App):
+class Flamecaster(App):
     table = None
     devices = {}
     systemConfig = {}
@@ -37,7 +41,7 @@ class WebInterface(App):
     routingPanel = None
 
     def __init__(self, *args):
-        super(WebInterface, self).__init__(*args)
+        super(Flamecaster, self).__init__(*args)
         self.devices = dict()
 
     def idle(self):
@@ -60,7 +64,10 @@ class WebInterface(App):
                 print("Device Dump ", msg)
 
             # reconfigure the table for the updated device list
-            self.table.set_row_count(2 + len(self.devices))
+            # leave the top row for labels.  The bottom row is blank
+            # because it will expand to fill any remaining space in the
+            #
+            self.table.set_row_count(3 + len(self.devices))
             self.fill_table()
             self.table.redraw()
 
@@ -206,8 +213,11 @@ class WebInterface(App):
         self.table = self.statusPanel.children['status_table']
 
         self.systemPanel = SystemSettingsContainer()
+        self.systemPanel.set_system_text(configDatabase['system'])
 
         self.devicesPanel = DevicesContainer()
+        self.devicesPanel.set_devices_text(configDatabase['devices'])
+
         self.routingPanel = RoutingContainer()
 
         # Add the initial content to the contentContainer
@@ -231,17 +241,29 @@ class WebInterface(App):
         # add information from the devices dictionary to the table
         # print(self.devices)
 
+        lastRow = 2 + len(self.devices)
+        for n in range(5):
+            self.table.item_at(0,n).style['height'] = "30px"
+            self.table.item_at(lastRow, n).set_text("  ")
+
         for i, key in enumerate(self.devices):
-            for n in range(5):
-                self.table.item_at(i, n).style['height'] = "30px"
 
             # the first row is reserved for the column headers
-            i += 1
+            i = i + 1
             self.table.item_at(i, 0).set_text(key)
             self.table.item_at(i, 1).set_text(str(self.devices[key]['ip']))
             self.table.item_at(i, 2).set_text(str(self.devices[key]['inPps']))
             self.table.item_at(i, 3).set_text(str(self.devices[key]['outFps']))
-            self.table.item_at(i, 4).set_text(self.devices[key]['connected'])
+
+            if self.devices[key]['connected'] == "true":
+                self.table.item_at(i, 4).css_color = "rgb(0,0,0)"
+                self.table.item_at(i, 4).set_text("Yes")
+            else:
+                self.table.item_at(i, 4).css_color = "rgb(255,0,0)"
+                self.table.item_at(i, 4).set_text("No")
+
+            for n in range(5):
+                self.table.item_at(i, n).style['height'] = "30px"
 
     def remove_current_content(self):
         # remove the current content from the contentContainer

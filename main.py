@@ -26,22 +26,24 @@ import logging
 from multiprocessing import Process, Event, Queue
 
 from ArtnetRouter import ArtnetRouter
+from ConfigParser import ConfigParser
 from WebInterface import RemiWrapper
 
 cmdQueue = Queue()
 dataQueue = Queue()
 exit_flag = Event()
 ui_is_active = Event()
+configDatabase = None
 
 
 # noinspection PyShadowingNames
-def mirror_process(cmdQueue: Queue, dataQueue: Queue, ui_is_active: Event, exit_flag: Event):
+def mirror_process(configDatabase: dict, cmdQueue: Queue, dataQueue: Queue, ui_is_active: Event, exit_flag: Event):
     """
     The actual Artnet router portion of our show runs in its own process,
     and communicates with the main process (and the WebUI process)
     via Queues and Events.
     """
-    ArtnetRouter(cmdQueue, dataQueue, ui_is_active, exit_flag)
+    ArtnetRouter(configDatabase, cmdQueue, dataQueue, ui_is_active, exit_flag)
 
 
 def main():
@@ -52,14 +54,17 @@ def main():
     exit_flag.clear()
     ui_is_active.clear()
 
+    global configDatabase
+    configDatabase = ConfigParser.readConfigFile("./config/config.conf")
+
     # create the Artnet router process
-    proc1 = Process(target=mirror_process, name="ArtnetRouter", args=(cmdQueue, dataQueue, ui_is_active, exit_flag))
+    proc1 = Process(target=mirror_process, name="ArtnetRouter", args=(configDatabase, cmdQueue, dataQueue, ui_is_active, exit_flag))
     proc1.daemon = True
     proc1.start()
 
     # now, run the WebUI in the main process
     try:
-        RemiWrapper(cmdQueue, dataQueue, ui_is_active)
+        RemiWrapper(configDatabase, cmdQueue, dataQueue, ui_is_active)
 
     except KeyboardInterrupt:
         exit_flag.set()

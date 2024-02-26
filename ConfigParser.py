@@ -1,5 +1,6 @@
 """
-Handles loading and writing parameters from the config file
+Handles loading and writing parameters from the config file, as well as
+parsing and validating the configuration data.
 """
 import json
 import logging
@@ -10,14 +11,15 @@ from Universe import *
 
 
 class ConfigParser:
-    # this file holds the default configuration
-    fileName = "./config/defaults.conf"
-
     deviceList = dict()
     universes = dict()
     systemSettings = dict()
 
     def parseDeviceInfo(self, config):
+        """
+        Extract device and universe data from the configuration dictionary and
+        create DisplayDevice objects for each device.
+        """
 
         # process our list of Pixelblazes
         devices = getParam(config, "devices")
@@ -34,6 +36,8 @@ class ConfigParser:
 
     def getDeviceUniverses(self, device, config):
         """
+        Extract universe data for a given device from the configuration dictionary
+        and add it to the device's universe list
         :param device: DisplayDevice object for this device
         :param config: dictionary containing universe info for the given device
         """
@@ -50,19 +54,47 @@ class ConfigParser:
             else:
                 self.universes[fragment.address_mask] = [fragment]
 
-    def load(self, fileName):
+    @staticmethod
+    def readConfigFile(fileName):
         """
-        read, parse and validate configuration data
+        read JSON blob of configuration data from the specified file
         """
-        # open config file
-        f = open(fileName)
+        try:
+            # open config file
+            f = open(fileName)
 
-        # read configuration JSON blob from file
-        data = json.load(f)
-        f.close()
+            # read configuration JSON blob from file
+            data = json.load(f)
+            f.close()
+
+            if data is None:
+                logging.error("%s is not a valid Flamecaster configuration file." % fileName)
+
+            return data
+
+        except Exception as e:
+            logging.error("Error reading config file %s: %s" % (fileName, str(e)))
+            return None
+
+    @staticmethod
+    def saveConfigFile(fileName, configDatabase):
+        """
+        Write configuration data to file
+        """
+        try:
+            with open(fileName, 'w') as f:
+                json.dump(configDatabase, f, indent=4)
+                f.close()
+
+        except Exception as e:
+            logging.error("Error writing config file %s: %s" % (fileName, str(e)))
+
+    def parse(self, data: dict):
+        """
+        Parse and validate configuration data from a loaded JSON blob
+        """
 
         if data is None:
-            logging.error("Config.conf not found. Exiting")
             sys.exit()
 
         if self.systemSettings is None:
@@ -73,6 +105,7 @@ class ConfigParser:
         self.systemSettings["statusUpdateIntervalMs"] = getParam(self.systemSettings, "statusUpdateIntervalMs", 3000)
         self.systemSettings["pixelsPerUniverse"] = getParam(self.systemSettings, "pixelsPerUniverse", 170)
         self.systemSettings["ipArtnet"] = getParam(self.systemSettings, "ipArtnet", "127.0.0.1")
+        self.systemSettings["ipWebInterface"] = getParam(self.systemSettings, "ipWebInterface", "127.0.0.1")
 
         self.parseDeviceInfo(data)
 

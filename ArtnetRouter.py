@@ -30,7 +30,7 @@ class ArtnetRouter:
 
     pixels = []
 
-    def __init__(self, cmdQueue: Queue, dataQueue: Queue, ui_is_active: Event, exit_flag: Event):
+    def __init__(self, configDatabase: dict, cmdQueue: Queue, dataQueue: Queue, ui_is_active: Event, exit_flag: Event):
         logging.basicConfig(level=logging.DEBUG)
 
         self.cmdQueue = cmdQueue
@@ -39,17 +39,17 @@ class ArtnetRouter:
         self.exit_flag = exit_flag
 
         jim = ConfigParser()
-        self.config, self.deviceList, self.universes = jim.load(self.configFileName)
+        self.config, self.deviceList, self.universes = jim.parse(configDatabase)
 
         # enqueue the system config data for the WebUI
         sys = "{\"system\":"+ json.dumps(self.config, indent=4)+"}"
-        self.dataQueue.put(sys)
+        #self.dataQueue.put(sys)
 
         # enqueue the universe data for the WebUI
-        self.dataQueue.put(self.getUniverseData())
+        #self.dataQueue.put(self.getUniverseData())
 
         # enqueue the device data for the WebUI
-        self.dataQueue.put(self.getDeviceData(1))
+        #self.dataQueue.put(self.getDeviceData(1))
 
         # bind multicast receiver to specific IP address
         logging.debug("Binding to ipArtnet %s" % self.config['ipArtnet'])

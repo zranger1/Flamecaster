@@ -54,21 +54,13 @@ class Flamecaster(App):
             if 'name' in msg:
                 # update the device dictionary with the new status
                 self.devices[msg['name']] = msg
-            elif 'system' in msg:
-                # print("System Config ", msg)
-                self.systemConfig = msg['system']
-            elif 'universes' in msg:
-                # print("Universes ", msg)
-                self.universes = msg['universes']
-            elif 'devices' in msg:
-                print("Device Dump ", msg)
 
             # reconfigure the table for the updated device list
             # leave the top row for labels.  The bottom row is blank
             # because it will expand to fill any remaining space in the
             #
             self.table.set_row_count(3 + len(self.devices))
-            self.fill_table()
+            self.fill_status_table()
             self.table.redraw()
 
     def main(self):
@@ -162,29 +154,11 @@ class Flamecaster(App):
         btnDevices.style['height'] = "30px"
         menuContainer.append(btnDevices, 'btnDevices')
 
-        btnRouting = Button('Routing')
-        btnRouting.attributes['class'] = "Button"
-        btnRouting.attributes['editor_baseclass'] = "Button"
-        btnRouting.attributes['editor_varname'] = "btnRouting"
-        btnRouting.attributes['editor_tag_type'] = "widget"
-        btnRouting.attributes['editor_newclass'] = "False"
-        btnRouting.attributes['editor_constructor'] = "('Routing')"
-        btnRouting.style['position'] = "absolute"
-        btnRouting.style['overflow'] = "auto"
-        btnRouting.style['left'] = "5px"
-        btnRouting.style['top'] = "160px"
-        btnRouting.style['margin'] = "0px"
-        btnRouting.style['width'] = "150px"
-        btnRouting.style['display'] = "block"
-        btnRouting.style['height'] = "30px"
-        menuContainer.append(btnRouting, 'btnRouting')
-
         # Add the menuContainer to the baseContainer and define the listeners for the menu elements
         baseContainer.append(menuContainer, 'menuContainer')
         baseContainer.children['menuContainer'].children['btnSystem'].onclick.do(self.onclick_btnSystem)
         baseContainer.children['menuContainer'].children['btnStatus'].onclick.do(self.onclick_btnStatus)
         baseContainer.children['menuContainer'].children['btnDevices'].onclick.do(self.onclick_btnDevices)
-        baseContainer.children['menuContainer'].children['btnRouting'].onclick.do(self.onclick_btnRouting)
 
         # The contentContainer
         contentContainer = Container()
@@ -213,20 +187,18 @@ class Flamecaster(App):
         self.table = self.statusPanel.children['status_table']
 
         self.systemPanel = SystemSettingsContainer()
-        self.systemPanel.set_system_text(configDatabase['system'])
+        self.systemPanel.set_system_text(configDatabase.get('system', {}))
 
         self.devicesPanel = DevicesContainer()
-        self.devicesPanel.set_devices_text(configDatabase['devices'])
+        self.devicesPanel.set_devices_text(configDatabase.get('devices', {}))
+        self.devicesPanel.set_universes_text({})
 
-        self.routingPanel = RoutingContainer()
+        # event handlers for devices panel
+        t = self.devicesPanel.children['pb_table']
+        t.onclick.do(self.onclick_pixelblaze_table)
 
         # Add the initial content to the contentContainer
         contentContainer.append(self.statusPanel, 'statusPanel')
-
-        # Define the listeners for GUI elements which are contained in the content Widgets
-        # We can't define it in the Widget classes because the listeners wouldn't have access to other GUI
-        # elements outside the Widget
-        # self.systemPanel.children['btnSend'].onclick.do(self.send_text_to_screen1)
 
         # Add the contentContainer to the baseContainer
         baseContainer.append(contentContainer, 'contentContainer')
@@ -237,25 +209,26 @@ class Flamecaster(App):
         # return the baseContainer as root Widget
         return self.baseContainer
 
-    def fill_table(self):
+    def fill_status_table(self):
         # add information from the devices dictionary to the table
         # print(self.devices)
 
         lastRow = 2 + len(self.devices)
         for n in range(5):
-            self.table.item_at(0,n).style['height'] = "30px"
+            self.table.item_at(0, n).style['height'] = uiTextHeight
             self.table.item_at(lastRow, n).set_text("  ")
 
         for i, key in enumerate(self.devices):
 
             # the first row is reserved for the column headers
             i = i + 1
+            db = self.devices[key]
             self.table.item_at(i, 0).set_text(key)
-            self.table.item_at(i, 1).set_text(str(self.devices[key]['ip']))
-            self.table.item_at(i, 2).set_text(str(self.devices[key]['inPps']))
-            self.table.item_at(i, 3).set_text(str(self.devices[key]['outFps']))
+            self.table.item_at(i, 1).set_text(str(db.get('ip', '')))
+            self.table.item_at(i, 2).set_text(str(db.get('inPps', 0)))
+            self.table.item_at(i, 3).set_text(str(db.get('outFps', 0)))
 
-            if self.devices[key]['connected'] == "true":
+            if db.get('connected', "false") == "true":
                 self.table.item_at(i, 4).css_color = "rgb(0,0,0)"
                 self.table.item_at(i, 4).set_text("Yes")
             else:
@@ -263,7 +236,8 @@ class Flamecaster(App):
                 self.table.item_at(i, 4).set_text("No")
 
             for n in range(5):
-                self.table.item_at(i, n).style['height'] = "30px"
+                self.table.item_at(i, n).style['height'] = uiTextHeight
+
 
     def remove_current_content(self):
         # remove the current content from the contentContainer
@@ -302,12 +276,14 @@ class Flamecaster(App):
         # Add the status panel to the contentWidget
         self.baseContainer.children['contentContainer'].append(self.devicesPanel, 'devicesPanel')
 
-    def onclick_btnRouting(self, emitter):
-        # if we're already showing the routing panel, don't do anything
-        if 'routingPanel' in self.baseContainer.children['contentContainer'].children.keys():
-            return
+    def onclick_pixelblaze_table(self, table):
+        data = {}
 
-        self.remove_current_content()
+        if table.last_clicked_row is not None:
+            devTag = "Pixelblaze" + table.last_clicked_row.children['0'].get_text()
+            data = configDatabase.get('devices', {})
+            data = data.get(devTag, {})
+            data = data.get('data', {})
 
-        # Add the status panel to the contentWidget
-        self.baseContainer.children['contentContainer'].append(self.routingPanel, 'routingPanel')
+        self.devicesPanel.set_universes_text(data)
+        table.redraw()

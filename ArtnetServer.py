@@ -33,11 +33,12 @@ class ArtnetServer:
     # The protocol version is 15
     ARTDMX_HEADER = b'Art-Net\x00\x00P\x00\x0e'
 
-    def __init__(self, callback):
+    def __init__(self, udp_port, callback):
         """Initializes Art-Net server."""
         # server active flag
         self.listen = True
         self.callback = callback
+        self.UDP_PORT = udp_port
 
         self.server_thread = Thread(target=self.__init_socket, daemon=True)
         self.server_thread.start()

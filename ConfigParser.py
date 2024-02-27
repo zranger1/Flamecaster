@@ -105,7 +105,9 @@ class ConfigParser:
         self.systemSettings["statusUpdateIntervalMs"] = getParam(self.systemSettings, "statusUpdateIntervalMs", 3000)
         self.systemSettings["pixelsPerUniverse"] = getParam(self.systemSettings, "pixelsPerUniverse", 170)
         self.systemSettings["ipArtnet"] = getParam(self.systemSettings, "ipArtnet", "127.0.0.1")
+        self.systemSettings["portArtnet"] = getParam(self.systemSettings, "portArtnet", 6454)
         self.systemSettings["ipWebInterface"] = getParam(self.systemSettings, "ipWebInterface", "127.0.0.1")
+        self.systemSettings["portWebInterface"] = getParam(self.systemSettings, "portWebInterface", 8081)
 
         self.parseDeviceInfo(data)
 

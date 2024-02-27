@@ -51,13 +51,17 @@ class ArtnetRouter:
         # enqueue the device data for the WebUI
         #self.dataQueue.put(self.getDeviceData(1))
 
-        # bind multicast receiver to specific IP address
-        logging.debug("Binding to ipArtnet %s" % self.config['ipArtnet'])
+        # TODO - bind multicast receiver to specific IP address
+        # TODO - the way it is now, we can still only handle 256 universes
+        # TODO - regardless of the number of incoming interfaces.  This is
+        # TODO - almost certainly ok, but just for the sake of completeness...
+        # logging.debug("Listening for Art-Net on %s:%s" % self.config['ipArtnet'], self.config['portArtnet'])
+        logging.debug("Listening for Art-Net on all interfaces at port %s" % self.config['portArtnet'])
         self.notifyTimer = time_in_millis()
 
         # loop 'till we're done, listening for packets and forwarding the pixel data
         # to Pixelblazes
-        self.receiver = ArtnetServer(self.main_dispatcher)
+        self.receiver = ArtnetServer(self.config["portArtnet"], self.main_dispatcher)
 
         # send current data frame to each Pixelblaze and periodically
         # send updated status information to the UI queue, where

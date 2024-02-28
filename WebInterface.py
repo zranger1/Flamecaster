@@ -24,8 +24,10 @@ class RemiWrapper:
 
         global configDatabase
         configDatabase = cfgDb
+        webIp = cfgDb['system'].get('ipWebInterface')
+        webPort = int(cfgDb['system'].get('portWebInterface'))
 
-        start(Flamecaster, port=8081, start_browser=False, update_interval=0.1, debug=False)
+        start(Flamecaster, address=webIp, port=webPort, start_browser=False, update_interval=0.1, debug=False)
 
 
 # noinspection PyUnusedLocal

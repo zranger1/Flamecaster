@@ -70,6 +70,18 @@ class ConfigParser:
             if data is None:
                 logging.error("%s is not a valid Flamecaster configuration file." % fileName)
 
+            # set some reasonable defaults for any missing system parameters
+            if not keyExists(data, "system"):
+                data["system"] = dict()
+
+            data["system"]["maxFps"] = getParam(data["system"], "maxFps", 30)
+            data["system"]["statusUpdateIntervalMs"] = getParam(data["system"], "statusUpdateIntervalMs", 3000)
+            data["system"]["pixelsPerUniverse"] = getParam(data["system"], "pixelsPerUniverse", 170)
+            data["system"]["ipArtnet"] = getParam(data["system"], "ipArtnet", "127.0.0.1")
+            data["system"]["portArtnet"] = getParam(data["system"], "portArtnet", 6454)
+            data["system"]["ipWebInterface"] = getParam(data["system"], "ipWebInterface", "127.0.0.1")
+            data["system"]["portWebInterface"] = getParam(data["system"], "portWebInterface", 8081)
+
             return data
 
         except Exception as e:
@@ -95,20 +107,10 @@ class ConfigParser:
         """
 
         if data is None:
+            logging.error("Error: No configuration data found in config file. Exiting.")
             sys.exit()
 
-        if self.systemSettings is None:
-            logging.debug("System settings not found in config file. Using defaults.")
-
         self.systemSettings = getParam(data, "system")
-        self.systemSettings["maxFps"] = getParam(self.systemSettings, "maxFps", 30)
-        self.systemSettings["statusUpdateIntervalMs"] = getParam(self.systemSettings, "statusUpdateIntervalMs", 3000)
-        self.systemSettings["pixelsPerUniverse"] = getParam(self.systemSettings, "pixelsPerUniverse", 170)
-        self.systemSettings["ipArtnet"] = getParam(self.systemSettings, "ipArtnet", "127.0.0.1")
-        self.systemSettings["portArtnet"] = getParam(self.systemSettings, "portArtnet", 6454)
-        self.systemSettings["ipWebInterface"] = getParam(self.systemSettings, "ipWebInterface", "127.0.0.1")
-        self.systemSettings["portWebInterface"] = getParam(self.systemSettings, "portWebInterface", 8081)
-
         self.parseDeviceInfo(data)
 
         return self.systemSettings, self.deviceList, self.universes

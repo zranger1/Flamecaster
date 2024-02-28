@@ -140,7 +140,6 @@ class Pixelblaze:
             self.latestSequencer = None
 
             self.requestConfigSettings()
-            self.setSendPreviewFrames(False)
 
     def close(self):
         """Close websocket connection."""

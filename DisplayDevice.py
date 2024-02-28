@@ -168,6 +168,7 @@ class DisplayDevice:
                     self.sendMethod()
                 else :
                     self.pb.open()
+                    self.pb.setSendPreviewFrames(False)
 
             # minimalist exception handling: if we get an exception it is going to be a
             # connection error, and we need to keep trying to reconnect at intervals.

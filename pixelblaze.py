@@ -28,14 +28,13 @@
 
 import errno
 import json
-import logging
 import socket
 from enum import Flag, IntEnum
 from typing import Union
 
 import websocket
 
-from ArtnetUtils import clamp
+from ArtnetUtils import clamp, time_in_millis
 
 
 # --- MAIN CLASS
@@ -49,7 +48,7 @@ class Pixelblaze:
     """
     # --- PRIVATE DATA
     default_recv_timeout = 1
-    max_open_retries = 5
+    default_open_interval = 2000  # milliseconds
     ws = None
     connected = False
     ipAddress = None
@@ -65,6 +64,7 @@ class Pixelblaze:
     latestPreview = None
     latestConfig = None
     connectionBroken = False
+    lastOpenAttempt = 0
 
     # --- OBJECT LIFETIME MANAGEMENT (CREATION/DELETION)
 
@@ -81,8 +81,6 @@ class Pixelblaze:
         self.ipAddress = ipAddress
         self.setCacheRefreshTime(600)  # seconds used in public api
 
-        # try to open the connection, but trap any exception if it fails unless
-        # ignoreOpenFailure is True
         try:
             self.open()
         except Exception:
@@ -117,23 +115,21 @@ class Pixelblaze:
     def open(self):
         """
         Opens a websocket connection to the Pixelblaze.  
-        
-        This is called automatically when a Pixelblaze object is created; it is not necessary to explicitly 
-        call open to connect unless the websocket has been explicitly closed by the user previously.
         """
-        if self.connected is False:
+        if self.connected is True:
+            return
+
+        # only retry opens every 2 seconds.
+        if time_in_millis() - self.lastOpenAttempt > self.default_open_interval:
+            self.lastOpenAttempt = time_in_millis()
             uri = "ws://" + self.ipAddress + ":81"
-            retryCount = 0
-            while True:
-                try:
-                    self.ws = websocket.create_connection(uri, sockopt=(
-                        (socket.SOL_SOCKET, socket.SO_REUSEADDR, 1), (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1),))
-                    break
-                except websocket._exceptions.WebSocketConnectionClosedException:
-                    # print("Open failed.  Retry # ",retryCount)
-                    retryCount += 1
-                    if retryCount >= self.max_open_retries:
-                        raise
+
+            try:
+                self.ws = websocket.create_connection(uri, sockopt=(
+                    (socket.SOL_SOCKET, socket.SO_REUSEADDR, 1), (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1),))
+
+            except websocket._exceptions.WebSocketConnectionClosedException:
+                raise
 
             self.ws.settimeout(self.default_recv_timeout)
             self.connected = True
@@ -192,75 +188,53 @@ class Pixelblaze:
         """
         message = None
 
-        try:
-            frame = self.ws.recv()
-            if type(frame) is str:
-                # Some frames are sent unrequested and often interrupt the conversation; we'll just
-                # save the most recent one and retrieve it later when we want it.
-                if frame.startswith('{"fps":'):
-                    self.latestStats = frame
-                    if binaryMessageType is self.MessageTypes.specialStats:
-                        return frame
-                elif frame.startswith('{"activeProgram":'):
-                    self.latestSequencer = frame
-                    if binaryMessageType is self.MessageTypes.specialConfig:
-                        return frame
-                elif frame.startswith('{"name":'):
-                    self.latestConfig = frame
-                    if binaryMessageType is self.MessageTypes.specialConfig:
-                        return frame
-                # We wanted a text frame, we got a text frame.
-                elif binaryMessageType is None:
+        frame = self.ws.recv()
+        if type(frame) is str:
+            # Some frames are sent unrequested and often interrupt the conversation; we'll just
+            # save the most recent one and retrieve it later when we want it.
+            if frame.startswith('{"fps":'):
+                self.latestStats = frame
+                if binaryMessageType is self.MessageTypes.specialStats:
                     return frame
+            elif frame.startswith('{"activeProgram":'):
+                self.latestSequencer = frame
+                if binaryMessageType is self.MessageTypes.specialConfig:
+                    return frame
+            elif frame.startswith('{"name":'):
+                self.latestConfig = frame
+                if binaryMessageType is self.MessageTypes.specialConfig:
+                    return frame
+            # We wanted a text frame, we got a text frame.
+            elif binaryMessageType is None:
+                return frame
+        else:
+            frameType = frame[0]
+            if frameType == self.MessageTypes.previewFrame.value:
+                self.latestPreview = frame[1:]
+                # This packet type doesn't have frameType flags.
+                if binaryMessageType == self.MessageTypes.previewFrame:
+                    return frame[1:]
+
+            # Check the flags to see if we need to read more packets.
+            frameFlags = frame[1]
+            if message is None and not (frameFlags & self.FrameTypes.frameFirst.value):
+                raise  # The first frame must be a start frame
+            if message is not None and (frameFlags & self.FrameTypes.frameFirst.value):
+                raise  # We shouldn't get a start frame after we've started
+            if message is None:
+                message = frame[2:]  # Start with the first packet...
             else:
-                frameType = frame[0]
-                if frameType == self.MessageTypes.previewFrame.value:
-                    self.latestPreview = frame[1:]
-                    # This packet type doesn't have frameType flags.
-                    if binaryMessageType == self.MessageTypes.previewFrame:
-                        return frame[1:]
+                message += frame[2:]  # ...and append the rest until we reach the end.
 
-                # Check the flags to see if we need to read more packets.
-                frameFlags = frame[1]
-                if message is None and not (frameFlags & self.FrameTypes.frameFirst.value):
-                    raise  # The first frame must be a start frame
-                if message is not None and (frameFlags & self.FrameTypes.frameFirst.value):
-                    raise  # We shouldn't get a start frame after we've started
-                if message is None:
-                    message = frame[2:]  # Start with the first packet...
-                else:
-                    message += frame[2:]  # ...and append the rest until we reach the end.
+            # If we've received all the packets, deal with the message.
+            if frameFlags & self.FrameTypes.frameLast.value:
+                # Expander config frames are ONLY sent during a config request, but they sometimes arrive
+                # out of order, so we'll save them and retrieve them separately.
+                if frameType == self.MessageTypes.ExpanderConfig:
+                    if binaryMessageType == self.MessageTypes.specialConfig:
+                        return message
+                return message
 
-                # If we've received all the packets, deal with the message.
-                if frameFlags & self.FrameTypes.frameLast.value:
-                    # Expander config frames are ONLY sent during a config request, but they sometimes arrive
-                    # out of order, so we'll save them and retrieve them separately.
-                    if frameType == self.MessageTypes.ExpanderConfig:
-                        if binaryMessageType == self.MessageTypes.specialConfig:
-                            return message
-                    return message
-
-        except websocket._exceptions.WebSocketTimeoutException:  # timeout -- we can just ignore this
-            return None
-
-        except websocket._exceptions.WebSocketConnectionClosedException:  # try reopening
-            print("wsReceive - socket closed on device " + self.ipAddress)
-            self.connectionBroken = True
-            self.close()
-            self.open()
-
-        except IOError as e:
-            # add test for WinError 10054 - existing connection reset
-            if e.errno == errno.EPIPE or e.errno == 10054:
-                print("wsReceive - socket reset on device " + self.ipAddress)
-                self.connectionBroken = True
-                self.close()
-                self.open()
-
-        except Exception as e:
-            self.connectionBroken = True
-            logging.debug(f"wsReceive: unknown exception: {e}")
-            raise
 
     def sendPing(self):
         """Send a Ping message to the Pixelblaze and wait for the Acknowledgement response.
@@ -270,54 +244,14 @@ class Pixelblaze:
         """
         return self.wsSendJson({"ping": True})
 
-    def maintain_connection(self):
-        """
-        Flush receive buffer and see that connection handshake is maintained.
-
-        It keeps the receive buffer clear of stray packets, and since connection maintenance
-        is handled by ws.recv(), keeps the connection alive.  Otherwise, it'll time out and hang or
-        disconnect after about 10 minutes.
-
-        Will run until there are no more packets to be read if loop is True, otherwise it will
-        read only the first available packet.
-
-        """
-        try:
-            self.wsReceive(binaryMessageType=None)
-
-        except Exception as e:
-            self.connectionBroken = True
-            logging.debug("Super Exceptional Exception in connection maintenance for " + self.ipAddress)
-            logging.debug(e)
-            raise
-
     def wsSendString(self, command: str):
         """Send a command with a preformatted string as data, and don't wait around for a response.
         (but still do all the connection maintenance stuff)
 
         Args:
             command str: string
-
         """
-        try:
-            self.ws.send(command)
-
-        except websocket._exceptions.WebSocketConnectionClosedException:
-            # print("wsSendString received WebSocketConnectionClosedException")
-            self.close()
-            self.open()  # try reopening
-
-        except IOError as e:
-            # print("wsSendString received IOError")
-            # add test for WinError 10054 - existing connection reset
-            if e.errno == errno.EPIPE or e.errno == 10054:
-                self.close()
-                self.open()
-
-        except Exception as e:
-            logging.debug("wsSendString received unexpected exception " + str(e))
-            self.close()
-            self.open()
+        self.ws.send(command)
 
     def wsSendJson(self, command: dict, *, expectedResponse=None) -> Union[str, bytes, None]:
         """Send a JSON-formatted command to the Pixelblaze, and optionally wait for a suitable response.
@@ -379,6 +313,7 @@ class Pixelblaze:
                 self.connectionBroken = True
                 self.close()
                 self.open()  # try reopening  # raise
+
 
     def wsSendBinary(self, binaryMessageType: MessageTypes, blob: bytes, *, expectedResponse: str = None):
         """Send a binary command to the Pixelblaze, and optionally wait for a suitable response.
@@ -461,6 +396,7 @@ class Pixelblaze:
                 self.close()
                 self.open()  # raise
 
+
     def getPeers(self):
         """A new command, added to the API but not yet implemented as of v2.29/v3.24, that will return
          a list of all the Pixelblazes visible on the local network segment.
@@ -471,6 +407,7 @@ class Pixelblaze:
         self.wsSendJson({"getPeers": True})
         return self.wsReceive(binaryMessageType=None)
 
+
     def setSendPreviewFrames(self, doUpdates: bool):
         """Set whether the Pixelblaze sends pattern preview frames.
 
@@ -479,8 +416,10 @@ class Pixelblaze:
         """
         self.wsSendJson({"sendUpdates": doUpdates})
 
+
     def getPreviewFrame(self) -> bytes:
         return self.latestPreview
+
 
     # --- PATTERNS tab: SEQUENCER section
 
@@ -488,6 +427,7 @@ class Pixelblaze:
         Off = 0
         ShuffleAll = 1
         Playlist = 2
+
 
     def setSequencerMode(self, sequencerMode: SequencerModes, *, saveToFlash: bool = False):
         """Sets the sequencer mode to one of the available sequencerModes (Off, ShuffleAll, or Playlist).
@@ -499,6 +439,7 @@ class Pixelblaze:
         """
         self.wsSendJson({"sequencerMode": sequencerMode, "save": saveToFlash}, expectedResponse=None)
 
+
     def setSequencerState(self, sequencerState: bool):
         """Set the run state of the sequencer.
 
@@ -508,6 +449,7 @@ class Pixelblaze:
         """
         self.wsSendJson({"runSequencer": sequencerState})
 
+
     def getActiveVariables(self) -> dict:
         """Gets the names and values of all variables exported by the current pattern.
 
@@ -516,6 +458,7 @@ class Pixelblaze:
             as the key and variableValue as the value.
         """
         return json.loads(self.wsSendJson({"getVars": True}, expectedResponse="vars")).get('vars')
+
 
     def setActiveVariables(self, dictVariables: dict):
         """Sets the values of one or more variables exported by the current pattern.
@@ -528,11 +471,13 @@ class Pixelblaze:
         """
         self.wsSendJson({"setVars": dictVariables})
 
+
     # --- PATTERNS tab: SAVED PATTERNS section: convenience functions
     def requestConfigSequencer(self):
         """Retrieves the Sequencer state when the Pixelblaze gets around to it
         """
         self.requestConfigSettings()
+
 
     def getActivePattern(self) -> str:
         """Returns the ID of the pattern currently running on the Pixelblaze.
@@ -541,6 +486,7 @@ class Pixelblaze:
             str: The patternId of the current pattern, if any; otherwise an empty string.
         """
         return self.latestSequencer.get('activeProgram').get('activeProgramId', "")
+
 
     def sendPatternToRenderer(self, bytecode: bytes, controls=None):
         """Sends a blob of bytecode and a JSON dictionary of UI controls to the Renderer.
@@ -558,10 +504,12 @@ class Pixelblaze:
         self.wsSendJson({"setControls": controls}, expectedResponse="ack")
         self.wsSendJson({"pause": False}, expectedResponse="ack")
 
+
     # --- SETTINGS menu
 
     def requestConfigSettings(self):
         self.wsSendJson({"getConfig": True})
+
 
     def getPixelCount(self) -> Union[int, None]:
         """Returns the number of LEDs connected to the Pixelblaze.
@@ -570,6 +518,7 @@ class Pixelblaze:
             int: The number of LEDs connected to the Pixelblaze.
         """
         return self.latestConfig.get('pixelCount', None)
+
 
     def pauseRenderer(self, doPause: bool):
         """Pause rendering. Lasts until unpause() is called or the Pixelblaze is reset.
@@ -583,6 +532,7 @@ class Pixelblaze:
             doPause (bool): If True, pause the render engine; if False, resume it.
         """
         self.wsSendJson({"pause": doPause}, expectedResponse="ack")
+
 
     def setCacheRefreshTime(self, seconds: int):
         """Set the interval, in seconds, after which calls to `getPatternList()` clear the pattern cache

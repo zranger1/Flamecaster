@@ -49,7 +49,10 @@ def mirror_process(configDatabase: dict, cmdQueue: Queue, dataQueue: Queue, ui_i
 def main():
     print("Flamecaster Artnet Router for Pixelblaze v.0.5.0")
     print("Copyright 2024 ZRanger1 - Apache 2.0 License")
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)-6s: %(message)s',
+        level=logging.DEBUG,
+        datefmt='%Y-%m-%d %H:%M:%S')
 
     exit_flag.clear()
     ui_is_active.clear()

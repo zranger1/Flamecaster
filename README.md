@@ -7,12 +7,13 @@ or more Pixelblazes
 This is very much a work in progress.  You are welcome to try it out, and I would love to hear your feedback,
 but please check back frequently for updates, and be aware that it is not yet ready for production use. 
 
-### State of the Project - 2/26/2024
+### State of the Project - 2/27/2024
 - **Art-Net -> Pixelblaze routing is working.** The good news - You can send Art-Net data from your lighting application
 to FlameCaster, and on to your Pixelblazes.  At this point, routing is quite reliable, even as Pixelblazes and Art-Net sources come and go at random.
 - **Configuration tools are not baked yet.**  To configure the system, you need to hand-edit the JSON in the config.conf
 file.  If you understand how Art-Net works, it's mostly self-explanatory, but it requires a fair amount of patience - it's very easy to misplace a comma or bracket in the JSON.
-- **The web UI is being slowly carved from mammoth bones, with stone tools!**  Right now, it just gives a crude status display. Lots more to be done here.
+- **The web UI is being slowly carved from mammoth bones, with stone tools!**  Currently, you can see device status, and view the configuration,
+but loading and saving configurations is not yet implemented.
 
 
 ### Requirements

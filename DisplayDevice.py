@@ -6,8 +6,9 @@ TODO - respect max frame rate
 """
 import threading
 from threading import Thread
-
+import logging
 import numpy as np
+import select
 
 from ArtnetUtils import *
 from pixelblaze import *
@@ -27,7 +28,7 @@ class DisplayDevice:
     packets_in = 0
     packets_out = 0
     run_flag = threading.Event()
-
+    sendFlag = False
     sendFrame = None
 
     pixels = []
@@ -99,26 +100,26 @@ class DisplayDevice:
 
     def _send_pre_init(self):
         """
-        Idle send function - runs while the Pixelblaze objects are initializing and
-        connecting, which may take a few seconds.
+        Idle send function - runs until a Pixelblaze is connected.  Keeps track
+        of incoming traffic, but doesn't try to send anything or connect the
+        pixelblaze.  If the initial connection attempt failed, the connection
+        maintenance task will keep trying.
         """
-
-        if self.pb is not None:
+        if self.pb is not None and self.pb.is_connected():
             self.sendMethod = self._send_frame
 
     def _send_frame(self):
         """
         Send a frame of packed pixel data to the Pixelblaze
         """
-        if (time_in_millis() - self.frame_timer) >= self.ms_per_frame:
+        t = time_in_millis()
+        if (t - self.frame_timer) >= self.ms_per_frame:
             if self.pixelsReceived > 0:
-                # logging.debug("Sending frame to " + self.name + " with " + str(self.pixelsReceived) + " pixels."
                 d = ("{\"setVars\":{\"pixels\":" +
                      np.array2string(self.pixels, precision=5, separator=',', suppress_small=True) + "}}")
                 self.pb.wsSendString(d)
                 self.packets_out += 1
-
-            self.frame_timer = time_in_millis()
+            self.frame_timer = t
 
     def getStatusString(self, et):
         """
@@ -130,8 +131,9 @@ class DisplayDevice:
             is_connected = "false"
         else:
             is_connected = "true" if self.pb.is_connected() else "false"
-
-        return json.dumps({"name": self.name, "inPps": self.packets_in / et, "outFps": self.packets_out / et,
+        inP = round(self.packets_in / et, 2)
+        outF = round(self.packets_out / et, 2)
+        return json.dumps({"name": self.name, "inPps": inP, "outFps": outF,
                                       "ip": self.ip, "maxFps": self.maxFps, "connected": is_connected})
 
     def resetCounters(self):
@@ -155,15 +157,24 @@ class DisplayDevice:
         logging.debug("Pixelblaze: %s (%s) initializing." % (self.name, self.ip))
         logging.debug("Connection is %s" % ("open" if self.pb.is_connected() else "NOT open"))
 
-        # the thread's job here is just to maintain the websocket connection
-        # and eat any incoming messages.  We're ignoring them for now, but
-        # we could use them to monitor the health of the Pixelblaze later.
+        # eat incoming traffic and send data to the Pixelblaze
         while self.run_flag.is_set():
             try:
-                self.pb.maintain_connection()
+                if self.pb.is_connected():
+                    ready = select.select([self.pb.ws.sock], [], [], 0)
+                    if ready[0]:
+                        self.pb.wsReceive()
 
+                    self.sendMethod()
+                else :
+                    self.pb.open()
+
+            # minimalist exception handling: if we get an exception it is going to be a
+            # connection error, and we need to keep trying to reconnect at intervals.
             except Exception as e:
-                logging.debug("Pixelblaze: %s (%s) exception: %s" % (self.name, self.ip, str(e)))
+                logging.debug("Pixelblaze %s (%s) stall or disconnect." % (self.name, self.ip))
+                logging.debug("Exception: %s" % str(e))
+                self.pb.close()
                 pass
 
     def stop(self):

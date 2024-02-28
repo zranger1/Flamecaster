@@ -31,7 +31,10 @@ class ArtnetRouter:
     pixels = []
 
     def __init__(self, configDatabase: dict, cmdQueue: Queue, dataQueue: Queue, ui_is_active: Event, exit_flag: Event):
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(
+            format='%(asctime)s %(levelname)-6s: %(message)s',
+            level=logging.DEBUG,
+            datefmt='%Y-%m-%d %H:%M:%S')
 
         self.cmdQueue = cmdQueue
         self.dataQueue = dataQueue
@@ -40,16 +43,6 @@ class ArtnetRouter:
 
         jim = ConfigParser()
         self.config, self.deviceList, self.universes = jim.parse(configDatabase)
-
-        # enqueue the system config data for the WebUI
-        sys = "{\"system\":"+ json.dumps(self.config, indent=4)+"}"
-        #self.dataQueue.put(sys)
-
-        # enqueue the universe data for the WebUI
-        #self.dataQueue.put(self.getUniverseData())
-
-        # enqueue the device data for the WebUI
-        #self.dataQueue.put(self.getDeviceData(1))
 
         # TODO - bind multicast receiver to specific IP address
         # TODO - the way it is now, we can still only handle 256 universes
@@ -62,37 +55,35 @@ class ArtnetRouter:
         # loop 'till we're done, listening for packets and forwarding the pixel data
         # to Pixelblazes
         self.receiver = ArtnetServer(self.config["portArtnet"], self.main_dispatcher)
+        sleep_time = self.config['statusUpdateIntervalMs'] / 1000
 
-        # send current data frame to each Pixelblaze and periodically
-        # send updated status information to the UI queue, where
-        # the WebUI can display it if anybody's watching.
+        # Periodically send updated status information to the UI queue, where
+        # the WebUI can display it if anybody's watching.  We try to keep
+        # this thread asleep as much as possible so the other threads in
+        # this process can deal with moving the data around.
         while True:
             try:
                 if self.exit_flag.is_set():
                     break
-                elapsedTime = (time_in_millis() - self.notifyTimer)
-                updateUI = (elapsedTime >= self.config['statusUpdateIntervalMs'])
+
+                time.sleep(sleep_time)
+                elapsedTime = time_in_millis() - self.notifyTimer
 
                 for key in self.deviceList:
                     dd = self.deviceList[key]
-                    dd.sendMethod()
-                    if updateUI:
-                        if ui_is_active.is_set():
-                            self.dataQueue.put(dd.getStatusString(elapsedTime / 1000))
-                        dd.resetCounters()
+                    if ui_is_active.is_set():
+                        self.dataQueue.put(dd.getStatusString(elapsedTime / 1000))
+                    dd.resetCounters()
 
-                if updateUI:
-                    self.notifyTimer = time_in_millis()
+                self.notifyTimer = time_in_millis()
 
             except KeyboardInterrupt:
                 # this throws us out of the loop and into the shutdown sequence
                 break
 
             except Exception as e:
-                logging.error("ArtnetRouter: Exceptional exception" + str(e))
-                logging.error("Pixelblaze probably disconnected or stalled.")
-                logging.error("Sleeping it off.  Will attempt to reconnect shortly.")
-                time.sleep(5)
+                logging.error("ArtnetRouter thread run loop: " + str(e))
+
 
         self.exit_flag.set()
         self.shutdown()

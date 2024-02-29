@@ -99,7 +99,7 @@ class ArtnetRouter:
             self.deviceList[key].stop()
 
         # stop listening for Artnet packets
-        print("Stopping Artnet Receiver")
+        logging.debug("Stopping Artnet receiver thread")
         del self.receiver
 
     def main_dispatcher(self, addr, data):

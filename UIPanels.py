@@ -138,12 +138,12 @@ class DevicesContainer(Container):
         self.append(btn, 'btnEdit')
 
         table = SingleRowSelectionTable(2, 5, True, True, width="427px", height="100%")
+        table.set_column_keys(['name', 'ip', 'pixelCount', 'maxFps', 'renderPattern'])
         table.style['position'] = "absolute"
         table.style['overflow'] = "auto"
         table.style['left'] = "0px"
         table.style['top'] = "50px"
 
-        # table.item_at(0, 0).set_text("#")
         table.item_at(0, 0).set_text("Name")
         table.item_at(0, 1).set_text("IP Address")
         table.item_at(0, 2).set_text("Pixels")
@@ -207,12 +207,12 @@ class UniversesContainer(Container):
         self.append(btn, 'btnRemove')
 
         table = SingleRowSelectionTable(2, 6, True, True, width=427, height="100%")
+        table.set_column_keys(['net', 'subnet', 'universe', 'startChannel', 'destIndex', 'pixelCount'])
         table.style['position'] = "absolute"
         table.style['overflow'] = "auto"
         table.style['left'] = "0px"
         table.style['top'] = "50px"
 
-        # table.item_at(0, 0).set_text("#")
         table.item_at(0, 0).set_text("Net")
         table.item_at(0, 1).set_text("Subnet")
         table.item_at(0, 2).set_text("Universe")

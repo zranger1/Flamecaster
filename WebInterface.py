@@ -5,6 +5,7 @@ from multiprocessing import Queue
 
 from remi import App, start
 
+from ArtnetUtils import clamp
 from UIPanels import *
 
 cmdQueue: Queue
@@ -32,7 +33,22 @@ def make_unique_tag(data: dict):
         n += 1
 
 
+def str_to_int(s: str):
+    """
+    Convert a string to a positive integer, or return 0 if the string is not a valid number
+    :param s:
+    :return: int
+    """
+    try:
+        return max(0, int(float(s)))
+    except ValueError:
+        return 0
+
+
 class RemiWrapper:
+    """
+    Set up local data and run our remi-based web interface.
+    """
     def __init__(self, cfgDb, cmdQ, dataQ, ui_flag):
         global cmdQueue
         cmdQueue = cmdQ
@@ -205,7 +221,7 @@ class Flamecaster(App):
         contentContainer.style['height'] = "500px"
 
         # Create top Level instances for the content Widgets.
-        # By defining these as top Level the Widgets live even if they are not shown
+        # By defining these as top Level the Widgets live even when they are not shown
 
         self.statusPanel = StatusContainer()
         # get a reference to the table in the screen1 Widget
@@ -241,7 +257,8 @@ class Flamecaster(App):
         self.universesPanel.children['btnRemove'].onclick.do(self.onclick_btnRemoveUniverse)
         self.universesPanel.children['u_table'].on_item_changed.do(self.on_universe_setting_changed)
 
-        # Add the initial content to the contentContainer
+        # Add initial content to the contentContainer - we start with the
+        # status panel displayed
         contentContainer.append(self.statusPanel, 'statusPanel')
 
         # Add the contentContainer to the baseContainer
@@ -255,12 +272,20 @@ class Flamecaster(App):
 
     def on_system_setting_changed(self, widget, newValue):
         # find key for this widget in systemPanel
+        key = ''
         for key in self.systemPanel.children:
             if self.systemPanel.children[key] == widget:
                 break
-        print('System setting for ' + key + ' changed to: ' + newValue)
 
-    def on_device_setting_changed(self, table, item, new_value, row, column):
+        # if the last two characters of the keyname are "Ip", keep it in string form
+        # otherwise, it's an integer
+        # TODO - actually validate the Ip address
+        if key[-2:] != "Ip":
+            newValue = str_to_int(newValue)
+
+        configDatabase['system'][key] = newValue
+
+    def on_device_setting_changed(self, table: SingleRowSelectionTable, item, new_value, row, column):
         """Event callback for table item change.
 
         Args:
@@ -270,9 +295,23 @@ class Flamecaster(App):
             row (int): row index.
             column (int): column index.
         """
-        print("Devices table item changed: ", new_value, row, column)
+        # perform minimal validation on the new value
+        if column == 2 or column == 3:
+            new_value = str_to_int(new_value)
 
-    def on_universe_setting_changed(self, table, item, new_value, row, column):
+        # don't allow changing the render pattern for now
+        # TODO - figure out what we need to do with this
+        elif column == 4:
+            new_value = "@preset"
+
+        # figure out where it belongs in the database
+        devTag = table.get_row_key(row)
+        key = table.get_column_key(column)
+        data = configDatabase.get('devices', {}).get(devTag, {})
+
+        data[key] = new_value
+
+    def on_universe_setting_changed(self, table: SingleRowSelectionTable, item, new_value, row, column):
         """Event callback for table item change.
 
         Args:
@@ -282,11 +321,27 @@ class Flamecaster(App):
             row (int): row index.
             column (int): column index.
         """
-        print("Universes table item changed: ", new_value, row, column)
+        # perform minimal validation on the new value
+        new_value = str_to_int(new_value)
+
+        # make sure that address values are in roughly the correct range
+        # TODO - seriously look at Art-Net universe/subnet/net validation
+        # TODO - really!  This is high priority!
+        if column < 3:
+            new_value = clamp(new_value, 0, 255)
+
+        # figure out where it belongs in the database and put it there.
+        devTag = self.universesPanel.deviceTag
+        data = configDatabase.get('devices', {}).get(devTag, {}).get('data', {})
+        uTag = table.get_row_key(row)
+        key = table.get_column_key(column)
+
+        data[uTag][key] = new_value
 
     def fill_status_table(self):
-        # add information from the devices dictionary to the table
-        # print(self.devices)
+        """ add information from the devices section of configDatabase to the status panel's
+        main table.
+        """
 
         lastRow = 2 + len(self.devices)
         for n in range(5):
@@ -314,7 +369,7 @@ class Flamecaster(App):
                 self.status_table.item_at(i, n).style['height'] = uiTextHeight
 
     def start_universe_editor(self):
-        # if we're already showing the status panel, don't do anything
+        """Switch to the universes panel.  If it's already showing, do nothing."""
         if 'universesPanel' in self.baseContainer.children['contentContainer'].children.keys():
             return
 
@@ -324,14 +379,18 @@ class Flamecaster(App):
         self.baseContainer.children['contentContainer'].append(self.universesPanel, 'universesPanel')
 
     def remove_current_content(self):
-        # remove the current content from the contentContainer
-        # currentContent = self.baseContainer.children['contentContainer'].children
+        """
+        Remove the current content from the contentContainer
+        :param self:
+        :return:
+        """
         currentContent = list(self.baseContainer.children['contentContainer'].children.values())[0]
         self.baseContainer.children['contentContainer'].remove_child(currentContent)
 
     # switch to the status panel
     def onclick_btnStatus(self, emitter):
-        # if we're already showing the status panel, don't do anything
+        """Switch to the status panel.  If it's already showing, do nothing."""
+
         if 'statusPanel' in self.baseContainer.children['contentContainer'].children.keys():
             return
 
@@ -341,7 +400,11 @@ class Flamecaster(App):
         self.baseContainer.children['contentContainer'].append(self.statusPanel, 'statusPanel')
 
     def onclick_btnSystem(self, emitter):
-        # if we're already showing the system panel, don't do anything
+        """
+        Switch to the system panel.  If it's already showing, do nothing.
+        :param emitter:
+        :return:
+        """
         if 'systemPanel' in self.baseContainer.children['contentContainer'].children.keys():
             return
 
@@ -351,7 +414,11 @@ class Flamecaster(App):
         self.baseContainer.children['contentContainer'].append(self.systemPanel, 'systemPanel')
 
     def onclick_btnDevices(self, emitter):
-        # if we're already showing the devices panel, don't do anything
+        """
+        Switch to the devices panel.  If it's already showing, do nothing.
+        :param emitter:
+        :return:
+        """
         if 'devicesPanel' in self.baseContainer.children['contentContainer'].children.keys():
             return
 
@@ -361,6 +428,11 @@ class Flamecaster(App):
         self.baseContainer.children['contentContainer'].append(self.devicesPanel, 'devicesPanel')
 
     def onclick_btnAddDevice(self, emitter):
+        """
+        Add a new Pixelblaze to the configDatabase and redraw the devices table.
+        :param emitter:
+        :return:
+        """
         # to add a device, we add it at the end of the configDatabase devices list,
         # rebuild the table, and redraw it
         data = configDatabase.get('devices', {})
@@ -372,22 +444,32 @@ class Flamecaster(App):
         data[devTag] = {'name': '*New*', 'ip': '0.0.0.0', 'pixelCount': 0, 'maxFps': 30, 'renderPattern': '@preset'}
         # append an empty "data" dictionary to the device
         data[devTag]['data'] = {}
-        configDatabase['devices'] = data
+        # configDatabase['devices'] = data
         self.devicesPanel.set_devices_text(data)
         self.devicesPanel.children['pb_table'].redraw()
 
     def onclick_btnRemoveDevice(self, emitter):
+        """
+        Remove the selected device from the configDatabase and redraw the table.
+        :param emitter:
+        :return:
+        """
         # to remove a device, we remove it in configDatabase and rebuild the table
         table = self.devicesPanel.children['pb_table']
         if table.last_clicked_row is not None:
             devTag = table.get_row_key(table.last_clicked_row)
             data = configDatabase.get('devices', {})
             data.pop(devTag, None)
-            configDatabase['devices'] = data
+            # configDatabase['devices'] = data
             self.devicesPanel.set_devices_text(data)
             table.redraw()
 
     def onclick_btnAddUniverse(self, emitter):
+        """
+        Add a new universe to the device's data and redraw the table.
+        :param emitter:
+        :return:
+        """
         table = self.universesPanel.children['u_table']
         devTag = self.universesPanel.deviceTag
         data = configDatabase.get('devices', {}).get(devTag, {}).get('data', {})
@@ -399,11 +481,15 @@ class Flamecaster(App):
         data[uTag] = {"net": 0, "subnet": 0, "universe": 1, "startChannel": 0, "destIndex": 0,
                       "pixelCount": 170}
 
-        configDatabase['devices'][devTag]['data'] = data
         self.universesPanel.set_universes_text(data)
         table.redraw()
 
     def onclick_btnRemoveUniverse(self, emitter):
+        """
+        Remove the selected universe from the device's data and redraw the table.
+        :param emitter:
+        :return:
+        """
         table = self.universesPanel.children['u_table']
         devTag = self.universesPanel.deviceTag
 
@@ -412,7 +498,7 @@ class Flamecaster(App):
             data = configDatabase.get('devices', {}).get(devTag, {}).get('data', {})
             data.pop(uTag, None)
 
-            configDatabase['devices'][devTag]['data'] = data
+            # configDatabase['devices'][devTag]['data'] = data
             self.universesPanel.set_universes_text(data)
             table.redraw()
 

@@ -1,3 +1,5 @@
+from typing import Union
+
 from remi.gui import *
 
 
@@ -14,11 +16,31 @@ class SingleRowSelectionTable(TableWidget):
         # keep a per-row dictionary of TableRow objects and associated configDatabase keys
         self.row_keys = {}
 
+        # keep a list of database keys associated with each column
+        self.column_keys = []
+
+    def set_column_keys(self, keys: list):
+        """Set the column keys for the table.
+
+        Args:
+            keys (list): a list of keys to set
+        """
+        self.column_keys = keys
+
+    def get_column_key(self, column: int):
+        """Returns the column key for the given column.
+           Returns None in case of item not found.
+
+        Args:
+            column (int): a column number
+        """
+        return self.column_keys[column]
+
     def clear_row_keys(self):
         """Clear the row_keys dictionary."""
         self.row_keys = {}
 
-    def set_row_key(self, row: int, key):
+    def set_row_key(self, row: int, key: str):
         """Set the row object's index(key) in the table.
 
         Args:
@@ -29,13 +51,17 @@ class SingleRowSelectionTable(TableWidget):
         rowObject = self.children[str(row)]
         self.row_keys[rowObject] = key
 
-    def get_row_key(self, row):
+    def get_row_key(self, row: Union[int, TableRow]):
         """Returns the row object's associated database index string in the table.
            Returns None in case of item not found.
 
         Args:
-            row (int): a TableRow object
+            row (int): a TableRow object or an integer.
         """
+        if isinstance(row, int):
+            # get the row's TableRow object from the table
+            row = self.children[str(row)]
+
         return self.row_keys.get(row, None)
 
     @decorate_event

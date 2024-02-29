@@ -47,8 +47,8 @@ class ArtnetRouter:
         # TODO - the way it is now, we can still only handle 256 universes
         # TODO - regardless of the number of incoming interfaces.  This is
         # TODO - almost certainly ok, but just for the sake of completeness...
-        # logging.debug("Listening for Art-Net on %s:%s" % self.config['ipArtnet'], self.config['portArtnet'])
-        logging.debug("Listening for Art-Net on all interfaces at port %s" % self.config['portArtnet'])
+        # print("Listening for Art-Net on %s:%s" % self.config['ipArtnet'], self.config['portArtnet'])
+        print("Listening for Art-Net on all interfaces at port %s" % self.config['portArtnet'])
         self.notifyTimer = time_in_millis()
 
         # loop 'till we're done, listening for packets and forwarding the pixel data
@@ -95,11 +95,11 @@ class ArtnetRouter:
     def shutdown(self):
         # stop all devices in DeviceList
         for key in self.deviceList:
-            logging.debug("Stopping device: " + self.deviceList[key].name)
+            logging.info("Stopping device: " + self.deviceList[key].name)
             self.deviceList[key].stop()
 
         # stop listening for Artnet packets
-        logging.debug("Stopping Artnet Receiver")
+        print("Stopping Artnet Receiver")
         del self.receiver
 
     def main_dispatcher(self, addr, data):

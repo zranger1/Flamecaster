@@ -11,7 +11,6 @@
  More information about pixelblaze-client can be found at: https://github.com/zranger1/pixelblaze-client
 
  Requires Python 3.10+, and the following libraries from pypl:
-     pixelblaze-client
      numpy
      websocket-client
      remi
@@ -49,23 +48,26 @@ def mirror_process(configDatabase: dict, cmdQueue: Queue, dataQueue: Queue, ui_i
 def main():
     print("Flamecaster Artnet Router for Pixelblaze v.0.5.0")
     print("Copyright 2024 ZRanger1 - Apache 2.0 License")
+
+    # configure logging
     logging.basicConfig(
         format='%(asctime)s %(levelname)-6s: %(message)s',
         level=logging.DEBUG,
         datefmt='%Y-%m-%d %H:%M:%S')
 
-    exit_flag.clear()
-    ui_is_active.clear()
-
     global configDatabase
     configDatabase = ConfigParser.readConfigFile("./config/config.conf")
 
     # create the Artnet router process
-    proc1 = Process(target=mirror_process, name="ArtnetRouter", args=(configDatabase, cmdQueue, dataQueue, ui_is_active, exit_flag))
+    exit_flag.clear()
+    ui_is_active.clear()
+
+    proc1 = Process(target=mirror_process, name="ArtnetRouter",
+                    args=(configDatabase, cmdQueue, dataQueue, ui_is_active, exit_flag))
     proc1.daemon = True
     proc1.start()
 
-    # now, run the WebUI in the main process
+    # now, run the WebUI in this process, where it will live 'till the app is closed.
     try:
         RemiWrapper(configDatabase, cmdQueue, dataQueue, ui_is_active)
 

@@ -119,7 +119,7 @@ class Pixelblaze:
         if self.connected is True:
             return
 
-        # only retry opens every 2 seconds.
+        # only retry opens every 2 seconds at most
         if time_in_millis() - self.lastOpenAttempt > self.default_open_interval:
             self.lastOpenAttempt = time_in_millis()
             uri = "ws://" + self.ipAddress + ":81"

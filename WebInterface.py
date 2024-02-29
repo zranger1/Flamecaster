@@ -220,16 +220,26 @@ class Flamecaster(App):
         self.universesPanel = UniversesContainer()
         self.universesPanel.set_universes_text({})
 
+        # event handlers for the system panel
+        self.systemPanel.children['maxFps'].onchange.do(self.on_system_setting_changed)
+        self.systemPanel.children['updateInterval'].onchange.do(self.on_system_setting_changed)
+        self.systemPanel.children['artNetIp'].onchange.do(self.on_system_setting_changed)
+        self.systemPanel.children['artNetPort'].onchange.do(self.on_system_setting_changed)
+        self.systemPanel.children['webIp'].onchange.do(self.on_system_setting_changed)
+        self.systemPanel.children['webPort'].onchange.do(self.on_system_setting_changed)
+
         # event handlers for devices panel
         self.devicesPanel.children['pb_table'].ondblclick.do(self.ondblclick_pixelblaze_table)
         self.devicesPanel.children['btnEdit'].onclick.do(self.ondblclick_pixelblaze_table)
         self.devicesPanel.children['btnAdd'].onclick.do(self.onclick_btnAddDevice)
         self.devicesPanel.children['btnRemove'].onclick.do(self.onclick_btnRemoveDevice)
+        self.devicesPanel.children['pb_table'].on_item_changed.do(self.on_device_setting_changed)
 
         # event handlers for universes table
         self.universesPanel.children['btnBack'].onclick.do(self.onclick_btnUniverseBack)
         self.universesPanel.children['btnAdd'].onclick.do(self.onclick_btnAddUniverse)
         self.universesPanel.children['btnRemove'].onclick.do(self.onclick_btnRemoveUniverse)
+        self.universesPanel.children['u_table'].on_item_changed.do(self.on_universe_setting_changed)
 
         # Add the initial content to the contentContainer
         contentContainer.append(self.statusPanel, 'statusPanel')
@@ -242,6 +252,37 @@ class Flamecaster(App):
 
         # return the baseContainer as root Widget
         return self.baseContainer
+
+    def on_system_setting_changed(self, widget, newValue):
+        # find key for this widget in systemPanel
+        for key in self.systemPanel.children:
+            if self.systemPanel.children[key] == widget:
+                break
+        print('System setting for ' + key + ' changed to: ' + newValue)
+
+    def on_device_setting_changed(self, table, item, new_value, row, column):
+        """Event callback for table item change.
+
+        Args:
+            table (TableWidget): The emitter of the event.
+            item (TableItem): The TableItem instance.
+            new_value (str): New text content.
+            row (int): row index.
+            column (int): column index.
+        """
+        print("Devices table item changed: ", new_value, row, column)
+
+    def on_universe_setting_changed(self, table, item, new_value, row, column):
+        """Event callback for table item change.
+
+        Args:
+            table (TableWidget): The emitter of the event.
+            item (TableItem): The TableItem instance.
+            new_value (str): New text content.
+            row (int): row index.
+            column (int): column index.
+        """
+        print("Universes table item changed: ", new_value, row, column)
 
     def fill_status_table(self):
         # add information from the devices dictionary to the table

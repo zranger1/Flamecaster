@@ -1,8 +1,9 @@
 """
-Per display device object - handles websocket connection, holds pixel buffer,
-and sending data to a single Pixelblaze
-
-TODO - respect max frame rate
+DisplayDevice object - handles websocket connection, holds pixel buffer,
+and communication with a single Pixelblaze.  Each DisplayDevice runs in its
+own thread, so any I/O waits or errors will not interfere with other operations.
+We expect that Pixelblaze connections may be intermittent and unreliable, so we
+need to handle errors and reconnections gracefully.
 """
 import threading
 from threading import Thread
@@ -46,7 +47,7 @@ class DisplayDevice:
         self.maxFps = min(config["maxFps"], self.maxFps)
         self.ms_per_frame = 1000 / self.maxFps
 
-        logging.debug("DisplayDevice: %s maxFps: %d (%d ms/frame)" % (self.name, self.maxFps, self.ms_per_frame))
+        logging.info("DisplayDevice: %s maxFps: %d (%d ms/frame)" % (self.name, self.maxFps, self.ms_per_frame))
 
         self.sendMethod = self._send_pre_init
 
@@ -54,10 +55,6 @@ class DisplayDevice:
         self.pixels = np.zeros(self.pixelCount, dtype=np.float32)
 
         # start the display device thread
-        # each display device runs in its own thread, so any I/O waits
-        # will not interfere with other operations.
-        # We fully expect Pixelblazes to come and go at odd and inconvenient
-        # times, so we need to be able to handle that gracefully.
         thread = Thread(target=self.run_thread)
         thread.daemon = True
         self.run_flag.set()
@@ -74,7 +71,6 @@ class DisplayDevice:
         :param count: number of pixels to process
         """
 
-        # logging.debug("  packet for " + self.name + " with " + str(count) + " pixels.")
         self.packets_in += 1
         self.pixelsReceived += count
 
@@ -103,7 +99,7 @@ class DisplayDevice:
         Idle send function - runs until a Pixelblaze is connected.  Keeps track
         of incoming traffic, but doesn't try to send anything or connect the
         pixelblaze.  If the initial connection attempt failed, the connection
-        maintenance task will keep trying.
+        maintenance task will try again at intervals.
         """
         if self.pb is not None and self.pb.is_connected():
             self.sendMethod = self._send_frame
@@ -167,13 +163,17 @@ class DisplayDevice:
 
                     self.sendMethod()
                 else:
+                    # sleep for a short interval. Even though pb.open will only retry every 2 seconds
+                    # we can spare the CPU (and the GIL) for a bit to let other threads run.
+                    time.sleep(0.25)
                     self.pb.open()
                     self.pb.setSendPreviewFrames(False)
 
             # minimalist exception handling: if we get an exception it is going to be a
-            # connection error, and we need to keep trying to reconnect at intervals.
+            # connection error of some sort, and we'll need to keep trying to reconnect at intervals.
+            # TODO - add an exponential backoff timer to the reconnect attempts?
             except Exception as e:
-                logging.debug("Pixelblaze %s (%s) stall or disconnect." % (self.name, self.ip))
+                logging.debug("Pixelblaze %s (%s) stalled or disconnected." % (self.name, self.ip))
                 logging.debug("Exception: %s" % str(e))
                 self.pb.close()
                 pass

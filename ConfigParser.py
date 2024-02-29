@@ -24,7 +24,7 @@ class ConfigParser:
         # process our list of Pixelblazes
         devices = getParam(config, "devices")
         if devices is None:
-            logging.error("Error: No output devices found in config file.")
+            logging.error("Error: No output devices found in config file. Exiting")
             exit(-1)
 
             # parse device record and add to hardware device list

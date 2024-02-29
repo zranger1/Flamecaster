@@ -1,32 +1,21 @@
 from remi.gui import *
+
 from UIConstants import uiTextHeight
+from remi_extensions import SingleRowSelectionTable
 
-class SingleRowSelectionTable(TableWidget):
-    """ A subclass of gui.Table that has the feature
-        that the last selected row is highlighted.
-    """
 
-    def __init__(self, *arg, **kwargs):
-        super(SingleRowSelectionTable, self).__init__(*arg, **kwargs)
-        self.last_clicked_row = None
-        self.last_item_clicked = None
-
-    @decorate_event
-    def on_table_row_click(self, row, item):
-        """ Highlight selected row, return the row and item clicked."""
-        if self.last_clicked_row is not None:
-            del self.last_clicked_row.style['outline']
-
-        if row != self.children['0']:
-            self.last_clicked_row = row
-            self.last_item_clicked = item
-            self.last_clicked_row.style['outline'] = "2px dotted blue"
-
-        else:
-            self.last_clicked_row = None
-            self.last_item_clicked = None
-
-        return row, item
+def make_action_button(text, offset, left):
+    btn = Button(text)
+    btn.attributes['class'] = "Button"
+    btn.style['position'] = "absolute"
+    btn.style['overflow'] = "auto"
+    btn.style['left'] = str(offset + left) + "px"
+    btn.style['top'] = "24px"
+    btn.style['margin'] = "0px"
+    btn.style['width'] = "50px"
+    btn.style['display'] = "block"
+    btn.style['height'] = "20px"
+    return btn
 
 
 class StatusContainer(Container):
@@ -41,8 +30,11 @@ class StatusContainer(Container):
         self.style['width'] = "427px"
         self.style['display'] = "block"
         self.style['height'] = "480px"
+
         title = Label("Status")
-        table = TableWidget(4, 5, True, False, width=427, height=480)
+        self.append(title, 'title')
+
+        table = TableWidget(4, 5, True, False, width="427px", height="100%")
 
         for n in range(5):
             table.item_at(0, n).style['height'] = uiTextHeight
@@ -52,7 +44,7 @@ class StatusContainer(Container):
         table.item_at(0, 2).set_text("PPS in")
         table.item_at(0, 3).set_text("FPS out")
         table.item_at(0, 4).set_text("Connected")
-        self.append(title, 'title')
+
         self.append(table, 'status_table')
 
 
@@ -137,37 +129,35 @@ class DevicesContainer(Container):
         # create table for devices
         title = Label("Pixelblazes")
         self.append(title, 'pb_title')
-        table = SingleRowSelectionTable(2, 5, True, False, width=427, height=200)
 
-        table.item_at(0, 0).set_text("#")
-        table.item_at(0, 1).set_text("Name")
-        table.item_at(0, 2).set_text("IP Address")
-        table.item_at(0, 3).set_text("Pixels")
+        btn = make_action_button("+", 200, 10)
+        self.append(btn, 'btnAdd')
+        btn = make_action_button("-", 200,80)
+        self.append(btn, 'btnRemove')
+        btn = make_action_button("Art-Net", 200,150)
+        self.append(btn, 'btnEdit')
+
+        table = SingleRowSelectionTable(2, 5, True, True, width="427px", height="100%")
+        table.style['position'] = "absolute"
+        table.style['overflow'] = "auto"
+        table.style['left'] = "0px"
+        table.style['top'] = "50px"
+
+        # table.item_at(0, 0).set_text("#")
+        table.item_at(0, 0).set_text("Name")
+        table.item_at(0, 1).set_text("IP Address")
+        table.item_at(0, 2).set_text("Pixels")
+        table.item_at(0, 3).set_text("Max FPS")
         table.item_at(0, 4).set_text("Pattern")
         self.append(table, 'pb_table')
-
-        # create table for universe editing
-        title = Label("Art-Net Data")
-        title.style['height'] = "20px"
-        self.append(title, 'u_title')
-        table = SingleRowSelectionTable(2, 7, True, False, width=427, height=200)
-
-        table.style.css_top = "220px"
-        table.style.css_left = "50px"
-        table.item_at(0, 0).set_text("#")
-        table.item_at(0,1).set_text("Net")
-        table.item_at(0,2).set_text("Subnet")
-        table.item_at(0, 3).set_text("Universe")
-        table.item_at(0, 4).set_text("Start Ch")
-        table.item_at(0, 5).set_text("Dest Index")
-        table.item_at(0, 6).set_text("Pixels")
-        self.append(table, 'u_table')
 
     def set_devices_text(self, data: dict):
         # get number of keys in the dictionary
         num_keys = len(data)
         table = self.get_child('pb_table')
-        table.set_row_count(num_keys + 3)
+        table.set_row_count(1)
+        table.clear_row_keys()
+        table.set_row_count(num_keys + 2)
 
         # fix the header height, which keeps getting reset
         for n in range(5):
@@ -180,39 +170,92 @@ class DevicesContainer(Container):
                 table.item_at(row, n).style['height'] = uiTextHeight
 
             db = data[key]
-            # set the row number
-            table.item_at(row, 0).set_text(str(row))
-            table.item_at(row, 1).set_text(db.get('name', ''))
-            table.item_at(row, 2).set_text(db.get('ip', ''))
-            table.item_at(row, 3).set_text(str(db.get('pixelCount',0)))
-            table.item_at(row, 4).set_text(db.get('renderPattern','@preset'))
+            table.set_row_key(row,key)
+            table.item_at(row, 0).set_text(db.get('name', ''))
+            table.item_at(row, 1).set_text(db.get('ip', ''))
+            table.item_at(row, 2).set_text(str(db.get('pixelCount', 0)))
+            table.item_at(row, 3).set_text(str(db.get('maxFps', 30)))
+            table.item_at(row, 4).set_text(db.get('renderPattern', '@preset'))
             row += 1
 
-    def set_universes_text(self, data: dict):
+
+class UniversesContainer(Container):
+    def __init__(self, **kwargs):
+        super(UniversesContainer, self).__init__(**kwargs)
+        self.style['position'] = "absolute"
+        self.style['overflow'] = "auto"
+        self.style['background-color'] = "#80f7ff"
+        self.style['left'] = "10px"
+        self.style['top'] = "10px"
+        self.style['margin'] = "0px"
+        self.style['width'] = "427px"
+        self.style['display'] = "block"
+        self.style['height'] = "480px"
+
+        self.deviceTag = None
+        self.deviceName = ''
+
+        # create table for universe editing
+        title = Label("Universe Data")
+        self.append(title, 'u_title')
+
+        btn = make_action_button("Back", 0,10)
+        self.append(btn, 'btnBack')
+        btn = make_action_button("+", 200,10)
+        self.append(btn, 'btnAdd')
+        btn = make_action_button("-",200, 80)
+        self.append(btn, 'btnRemove')
+
+        table = SingleRowSelectionTable(2, 6, True, True, width=427, height="100%")
+        table.style['position'] = "absolute"
+        table.style['overflow'] = "auto"
+        table.style['left'] = "0px"
+        table.style['top'] = "50px"
+
+        # table.item_at(0, 0).set_text("#")
+        table.item_at(0, 0).set_text("Net")
+        table.item_at(0, 1).set_text("Subnet")
+        table.item_at(0, 2).set_text("Universe")
+        table.item_at(0, 3).set_text("Start Ch")
+        table.item_at(0, 4).set_text("Dest Index")
+        table.item_at(0, 5).set_text("Pixels")
+        self.append(table, 'u_table')
+
+    def set_universes_text(self, data: dict, name: str = None, devTag = None):
+        # if a new device tag isn't specified, leave it alone.
+        if devTag is not None:
+            self.deviceTag = devTag
+
+        if name is not None:
+            self.deviceName = name
+
+        label = self.get_child('u_title')
+        label.set_text("Universe Data for " + self.deviceName)
+
         # get number of keys in the dictionary
         num_keys = len(data)
         table = self.get_child('u_table')
         # clear everything but headers out of the table, then
         # set the new size.
         table.set_row_count(1)
-        table.set_row_count(num_keys + 3)
+        table.clear_row_keys()
+        table.set_row_count(num_keys + 2)
 
         # fix the header height, which keeps getting reset
-        for n in range(7):
+        for n in range(6):
             table.item_at(0, n).css_height = uiTextHeight
 
         row = 1
         # for each key in the dictionary
         for key in data:
-            for n in range(7):
+            for n in range(6):
                 table.item_at(row, n).css_height = uiTextHeight
 
-            # set the row number
-            table.item_at(row, 0).set_text(str(row))
-            table.item_at(row, 1).set_text(str(data.get(key).get('net',0)))
-            table.item_at(row, 2).set_text(str(data.get(key).get('subnet',0)))
-            table.item_at(row, 3).set_text(str(data.get(key).get('universe',0)))
-            table.item_at(row, 4).set_text(str(data.get(key).get('startChannel',0)))
-            table.item_at(row, 5).set_text(str(data.get(key).get('destIndex',0)))
-            table.item_at(row, 6).set_text(str(data.get(key).get('pixelCount',0)))
+            table.set_row_key(row,key)
+            table.item_at(row, 0).set_text(str(data.get(key).get('net', 0)))
+            table.item_at(row, 1).set_text(str(data.get(key).get('subnet', 0)))
+            table.item_at(row, 2).set_text(str(data.get(key).get('universe', 0)))
+            table.item_at(row, 3).set_text(str(data.get(key).get('startChannel', 0)))
+            table.item_at(row, 4).set_text(str(data.get(key).get('destIndex', 0)))
+            table.item_at(row, 5).set_text(str(data.get(key).get('pixelCount', 0)))
             row += 1

@@ -1,13 +1,20 @@
+import copy
 import json
 from multiprocessing import Event
 from multiprocessing import Queue
 
 from remi import App, start
+
 from UIPanels import *
 
 cmdQueue: Queue
 dataQueue: Queue
 ui_is_active: Event
+
+# liveConfig is the config file currently running on the ArtnetRouter
+liveConfig: dict
+
+# configDatabase is a local copy that we can work on in our editors
 configDatabase: dict
 
 
@@ -22,8 +29,12 @@ class RemiWrapper:
         global ui_is_active
         ui_is_active = ui_flag
 
+        global liveConfig
+        liveConfig = cfgDb
+
         global configDatabase
-        configDatabase = cfgDb
+        configDatabase = copy.deepcopy(cfgDb)
+
         webIp = cfgDb['system'].get('ipWebInterface')
         webPort = int(cfgDb['system'].get('portWebInterface'))
 
@@ -32,15 +43,13 @@ class RemiWrapper:
 
 # noinspection PyUnusedLocal
 class Flamecaster(App):
-    table = None
+    status_table = None
     devices = {}
-    systemConfig = {}
-    universes = {}
     baseContainer = None
     statusPanel = None
     systemPanel = None
     devicesPanel = None
-    routingPanel = None
+    universesPanel = None
 
     def __init__(self, *args):
         super(Flamecaster, self).__init__(*args)
@@ -57,13 +66,13 @@ class Flamecaster(App):
                 # update the device dictionary with the new status
                 self.devices[msg['name']] = msg
 
-            # reconfigure the table for the updated device list
+            # reconfigure the status table for the updated device list
             # leave the top row for labels.  The bottom row is blank
             # because it will expand to fill any remaining space in the
             #
-            self.table.set_row_count(3 + len(self.devices))
+            self.status_table.set_row_count(3 + len(self.devices))
             self.fill_status_table()
-            self.table.redraw()
+            self.status_table.redraw()
 
     def main(self):
 
@@ -186,18 +195,27 @@ class Flamecaster(App):
 
         self.statusPanel = StatusContainer()
         # get a reference to the table in the screen1 Widget
-        self.table = self.statusPanel.children['status_table']
+        self.status_table = self.statusPanel.children['status_table']
 
         self.systemPanel = SystemSettingsContainer()
         self.systemPanel.set_system_text(configDatabase.get('system', {}))
 
         self.devicesPanel = DevicesContainer()
         self.devicesPanel.set_devices_text(configDatabase.get('devices', {}))
-        self.devicesPanel.set_universes_text({})
+
+        self.universesPanel = UniversesContainer()
+        self.universesPanel.set_universes_text({})
 
         # event handlers for devices panel
-        t = self.devicesPanel.children['pb_table']
-        t.onclick.do(self.onclick_pixelblaze_table)
+        self.devicesPanel.children['pb_table'].ondblclick.do(self.ondblclick_pixelblaze_table)
+        self.devicesPanel.children['btnEdit'].onclick.do(self.ondblclick_pixelblaze_table)
+        self.devicesPanel.children['btnAdd'].onclick.do(self.onclick_btnAddDevice)
+        self.devicesPanel.children['btnRemove'].onclick.do(self.onclick_btnRemoveDevice)
+
+        # event handlers for universes table
+        self.universesPanel.children['btnBack'].onclick.do(self.onclick_btnUniverseBack)
+        self.universesPanel.children['btnAdd'].onclick.do(self.onclick_btnAddUniverse)
+        self.universesPanel.children['btnRemove'].onclick.do(self.onclick_btnRemoveUniverse)
 
         # Add the initial content to the contentContainer
         contentContainer.append(self.statusPanel, 'statusPanel')
@@ -217,29 +235,38 @@ class Flamecaster(App):
 
         lastRow = 2 + len(self.devices)
         for n in range(5):
-            self.table.item_at(0, n).style['height'] = uiTextHeight
-            self.table.item_at(lastRow, n).set_text("  ")
+            self.status_table.item_at(0, n).style['height'] = uiTextHeight
+            self.status_table.item_at(lastRow, n).set_text("  ")
 
         for i, key in enumerate(self.devices):
 
             # the first row is reserved for the column headers
             i = i + 1
             db = self.devices[key]
-            self.table.item_at(i, 0).set_text(key)
-            self.table.item_at(i, 1).set_text(str(db.get('ip', '')))
-            self.table.item_at(i, 2).set_text(str(db.get('inPps', 0)))
-            self.table.item_at(i, 3).set_text(str(db.get('outFps', 0)))
+            self.status_table.item_at(i, 0).set_text(key)
+            self.status_table.item_at(i, 1).set_text(str(db.get('ip', '')))
+            self.status_table.item_at(i, 2).set_text(str(db.get('inPps', 0)))
+            self.status_table.item_at(i, 3).set_text(str(db.get('outFps', 0)))
 
             if db.get('connected', "false") == "true":
-                self.table.item_at(i, 4).css_color = "rgb(0,0,0)"
-                self.table.item_at(i, 4).set_text("Yes")
+                self.status_table.item_at(i, 4).css_color = "rgb(0,0,0)"
+                self.status_table.item_at(i, 4).set_text("Yes")
             else:
-                self.table.item_at(i, 4).css_color = "rgb(255,0,0)"
-                self.table.item_at(i, 4).set_text("No")
+                self.status_table.item_at(i, 4).css_color = "rgb(255,0,0)"
+                self.status_table.item_at(i, 4).set_text("No")
 
             for n in range(5):
-                self.table.item_at(i, n).style['height'] = uiTextHeight
+                self.status_table.item_at(i, n).style['height'] = uiTextHeight
 
+    def start_universe_editor(self):
+        # if we're already showing the status panel, don't do anything
+        if 'universesPanel' in self.baseContainer.children['contentContainer'].children.keys():
+            return
+
+        self.remove_current_content()
+
+        # Add the status panel to the contentWidget
+        self.baseContainer.children['contentContainer'].append(self.universesPanel, 'universesPanel')
 
     def remove_current_content(self):
         # remove the current content from the contentContainer
@@ -278,14 +305,90 @@ class Flamecaster(App):
         # Add the status panel to the contentWidget
         self.baseContainer.children['contentContainer'].append(self.devicesPanel, 'devicesPanel')
 
-    def onclick_pixelblaze_table(self, table):
-        data = {}
+    def onclick_btnAddDevice(self, emitter):
+        # to add a device, we add it at the end of the configDatabase devices list,
+        # rebuild the table, and redraw it
+        data = configDatabase.get('devices', {})
 
+        # generate a unique tag for the new device
+        tagId = 1 + len(data)
+        devTag = "Pixelblaze" + str(1 + tagId)
+        while devTag in data:
+            tagId += 1
+            devTag = "Pixelblaze" + str(1 + tagId)
+
+        # add the new device to the database
+        data[devTag] = {'name': '*New*', 'ip': '0.0.0.0', 'pixelCount': 0, 'maxFps': 30, 'renderPattern': '@preset'}
+        # append an empty "data" dictionary to the device
+        data[devTag]['data'] = {}
+        configDatabase['devices'] = data
+        self.devicesPanel.set_devices_text(data)
+        self.devicesPanel.children['pb_table'].redraw()
+
+    def onclick_btnRemoveDevice(self, emitter):
+        # to remove a device, we remove it in configDatabase and rebuild the table
+        table = self.devicesPanel.children['pb_table']
         if table.last_clicked_row is not None:
-            devTag = "Pixelblaze" + table.last_clicked_row.children['0'].get_text()
+            devTag = table.get_row_key(table.last_clicked_row)
+            data = configDatabase.get('devices', {})
+            data.pop(devTag, None)
+            configDatabase['devices'] = data
+            self.devicesPanel.set_devices_text(data)
+            table.redraw()
+
+    def onclick_btnAddUniverse(self, emitter):
+        # to add a universe, we add it at the end of the configDatabase universes list,
+        # rebuild the table, and redraw it
+        table = self.universesPanel.children['u_table']
+        devTag = self.universesPanel.deviceTag
+        data = configDatabase.get('devices', {})
+        target = data[devTag].get('data', {})
+
+        # generate a unique tag for the new device
+        tagId = 1 + len(data)
+        uTag = str(tagId)
+        while uTag in target:
+            tagId += 1
+            uTag = str(tagId)
+
+        # add the new universe to the device's data dictionary
+        target[uTag] = {"net": 0, "subnet": 0, "universe": 1, "startChannel": 0, "destIndex": 0,
+                              "pixelCount": 170}
+
+        configDatabase['devices'][devTag]['data'] = target
+        self.universesPanel.set_universes_text(data)
+        table.redraw()
+
+    def onclick_btnRemoveUniverse(self, emitter):
+        # to remove a universe, we remove it in configDatabase and rebuild the table
+        table = self.universesPanel.children['u_table']
+        devTag = self.universesPanel.deviceTag
+        if table.last_clicked_row is not None:
+            uTag = table.get_row_key(table.last_clicked_row)
+            data = configDatabase.get('devices', {})
+            data[devTag].pop(uTag, None)
+            configDatabase['devices'] = data
+            self.universesPanel.set_universes_text(data)
+            table.redraw()
+
+    def onclick_btnUniverseBack(self, emitter):
+        self.onclick_btnDevices(emitter)
+
+    def onclick_pixelblaze_table(self, table):
+        pass
+
+    def ondblclick_pixelblaze_table(self, table):
+        """Called when the Widget gets double clicked by the user with the left mouse button."""
+        table = self.devicesPanel.children['pb_table']
+
+        # only react to clicks on a valid, selected data row
+        if table.last_clicked_row is not None:
+            devTag = table.get_row_key(table.last_clicked_row)
             data = configDatabase.get('devices', {})
             data = data.get(devTag, {})
+            name = data.get('name', '')
             data = data.get('data', {})
 
-        self.devicesPanel.set_universes_text(data)
-        table.redraw()
+            self.universesPanel.set_universes_text(data, name, devTag)
+            self.start_universe_editor()
+        return

@@ -132,9 +132,9 @@ class DevicesContainer(Container):
 
         btn = make_action_button("+", 200, 10)
         self.append(btn, 'btnAdd')
-        btn = make_action_button("-", 200,80)
+        btn = make_action_button("-", 200, 80)
         self.append(btn, 'btnRemove')
-        btn = make_action_button("Art-Net", 200,150)
+        btn = make_action_button("Art-Net", 200, 150)
         self.append(btn, 'btnEdit')
 
         table = SingleRowSelectionTable(2, 5, True, True, width="427px", height="100%")
@@ -170,7 +170,7 @@ class DevicesContainer(Container):
                 table.item_at(row, n).style['height'] = uiTextHeight
 
             db = data[key]
-            table.set_row_key(row,key)
+            table.set_row_key(row, key)
             table.item_at(row, 0).set_text(db.get('name', ''))
             table.item_at(row, 1).set_text(db.get('ip', ''))
             table.item_at(row, 2).set_text(str(db.get('pixelCount', 0)))
@@ -199,11 +199,11 @@ class UniversesContainer(Container):
         title = Label("Universe Data")
         self.append(title, 'u_title')
 
-        btn = make_action_button("Back", 0,10)
+        btn = make_action_button("Back", 0, 10)
         self.append(btn, 'btnBack')
-        btn = make_action_button("+", 200,10)
+        btn = make_action_button("+", 200, 10)
         self.append(btn, 'btnAdd')
-        btn = make_action_button("-",200, 80)
+        btn = make_action_button("-", 200, 80)
         self.append(btn, 'btnRemove')
 
         table = SingleRowSelectionTable(2, 6, True, True, width=427, height="100%")
@@ -221,7 +221,7 @@ class UniversesContainer(Container):
         table.item_at(0, 5).set_text("Pixels")
         self.append(table, 'u_table')
 
-    def set_universes_text(self, data: dict, name: str = None, devTag = None):
+    def set_universes_text(self, data: dict, name: str = None, devTag=None):
         # if a new device tag isn't specified, leave it alone.
         if devTag is not None:
             self.deviceTag = devTag
@@ -251,7 +251,7 @@ class UniversesContainer(Container):
             for n in range(6):
                 table.item_at(row, n).css_height = uiTextHeight
 
-            table.set_row_key(row,key)
+            table.set_row_key(row, key)
             table.item_at(row, 0).set_text(str(data.get(key).get('net', 0)))
             table.item_at(row, 1).set_text(str(data.get(key).get('subnet', 0)))
             table.item_at(row, 2).set_text(str(data.get(key).get('universe', 0)))

@@ -1,5 +1,6 @@
 from remi.gui import *
 
+
 class SingleRowSelectionTable(TableWidget):
     """ An "improved" TableWidget that allows single
         row selection and highlighting.
@@ -17,7 +18,6 @@ class SingleRowSelectionTable(TableWidget):
         """Clear the row_keys dictionary."""
         self.row_keys = {}
 
-
     def set_row_key(self, row: int, key):
         """Set the row object's index(key) in the table.
 
@@ -28,7 +28,6 @@ class SingleRowSelectionTable(TableWidget):
         # get the row's TableRow object from the table
         rowObject = self.children[str(row)]
         self.row_keys[rowObject] = key
-
 
     def get_row_key(self, row):
         """Returns the row object's associated database index string in the table.

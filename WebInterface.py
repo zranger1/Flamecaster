@@ -18,6 +18,20 @@ liveConfig: dict
 configDatabase: dict
 
 
+def make_unique_tag(data: dict):
+    """
+    Given a dictionary, return a unique stringified integer tag that is not in the dictionary.
+    :param data:
+    :return: tag
+    """
+    n = len(data)
+    while True:
+        tag = str(n)
+        if tag not in data:
+            return tag
+        n += 1
+
+
 class RemiWrapper:
     def __init__(self, cfgDb, cmdQ, dataQ, ui_flag):
         global cmdQueue
@@ -311,11 +325,7 @@ class Flamecaster(App):
         data = configDatabase.get('devices', {})
 
         # generate a unique tag for the new device
-        tagId = 1 + len(data)
-        devTag = "Pixelblaze" + str(1 + tagId)
-        while devTag in data:
-            tagId += 1
-            devTag = "Pixelblaze" + str(1 + tagId)
+        devTag = make_unique_tag(data)
 
         # add the new device to the database
         data[devTag] = {'name': '*New*', 'ip': '0.0.0.0', 'pixelCount': 0, 'maxFps': 30, 'renderPattern': '@preset'}
@@ -337,37 +347,31 @@ class Flamecaster(App):
             table.redraw()
 
     def onclick_btnAddUniverse(self, emitter):
-        # to add a universe, we add it at the end of the configDatabase universes list,
-        # rebuild the table, and redraw it
         table = self.universesPanel.children['u_table']
         devTag = self.universesPanel.deviceTag
-        data = configDatabase.get('devices', {})
-        target = data[devTag].get('data', {})
+        data = configDatabase.get('devices', {}).get(devTag, {}).get('data', {})
+        uTag = make_unique_tag(data)
 
-        # generate a unique tag for the new device
-        tagId = 1 + len(data)
-        uTag = str(tagId)
-        while uTag in target:
-            tagId += 1
-            uTag = str(tagId)
+        # add reasonable defaults for the new universe to the device
+        # TODO - let's be smarter about filling in universe details based on the
+        # TODO - device's pixel count and the number of universes already defined
+        data[uTag] = {"net": 0, "subnet": 0, "universe": 1, "startChannel": 0, "destIndex": 0,
+                      "pixelCount": 170}
 
-        # add the new universe to the device's data dictionary
-        target[uTag] = {"net": 0, "subnet": 0, "universe": 1, "startChannel": 0, "destIndex": 0,
-                              "pixelCount": 170}
-
-        configDatabase['devices'][devTag]['data'] = target
+        configDatabase['devices'][devTag]['data'] = data
         self.universesPanel.set_universes_text(data)
         table.redraw()
 
     def onclick_btnRemoveUniverse(self, emitter):
-        # to remove a universe, we remove it in configDatabase and rebuild the table
         table = self.universesPanel.children['u_table']
         devTag = self.universesPanel.deviceTag
+
         if table.last_clicked_row is not None:
             uTag = table.get_row_key(table.last_clicked_row)
-            data = configDatabase.get('devices', {})
-            data[devTag].pop(uTag, None)
-            configDatabase['devices'] = data
+            data = configDatabase.get('devices', {}).get(devTag, {}).get('data', {})
+            data.pop(uTag, None)
+
+            configDatabase['devices'][devTag]['data'] = data
             self.universesPanel.set_universes_text(data)
             table.redraw()
 

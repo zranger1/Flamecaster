@@ -1,12 +1,11 @@
-import json
 import logging
 import time
-from multiprocessing import Queue
 from multiprocessing import Event
+from multiprocessing import Queue
 
 from ArtnetServer import ArtnetServer
-from ConfigParser import ConfigParser
 from ArtnetUtils import time_in_millis
+from ConfigParser import ConfigParser
 
 
 class ArtnetRouter:
@@ -84,7 +83,6 @@ class ArtnetRouter:
             except Exception as e:
                 logging.error("ArtnetRouter thread run loop: " + str(e))
 
-
         self.exit_flag.set()
         self.shutdown()
 
@@ -131,7 +129,6 @@ class ArtnetRouter:
         result += "}}"
         return result
 
-
     # convert the printable data in self.deviceList to a JSON string and return it,
     # by calling each device's getStatusString method and concatenating the results
     def getDeviceData(self, et):
@@ -145,5 +142,3 @@ class ArtnetRouter:
         result = result[:-1]
         result += "}}"
         return result
-
-

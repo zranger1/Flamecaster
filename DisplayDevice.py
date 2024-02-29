@@ -134,7 +134,7 @@ class DisplayDevice:
         inP = round(self.packets_in / et, 2)
         outF = round(self.packets_out / et, 2)
         return json.dumps({"name": self.name, "inPps": inP, "outFps": outF,
-                                      "ip": self.ip, "maxFps": self.maxFps, "connected": is_connected})
+                           "ip": self.ip, "maxFps": self.maxFps, "connected": is_connected})
 
     def resetCounters(self):
         """
@@ -166,7 +166,7 @@ class DisplayDevice:
                         self.pb.wsReceive()
 
                     self.sendMethod()
-                else :
+                else:
                     self.pb.open()
                     self.pb.setSendPreviewFrames(False)
 

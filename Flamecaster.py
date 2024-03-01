@@ -22,27 +22,22 @@
  v0.5.0   02/23/2024   ZRanger1  Initial pre-alpha release
 """
 import logging
-from multiprocessing import Process, Event, Queue
+from multiprocessing import Process
 
 from ArtnetRouter import ArtnetRouter
 from ConfigParser import ConfigParser
+from ProjectData import ProjectData
 from WebInterface import RemiWrapper
-
-cmdQueue = Queue()
-dataQueue = Queue()
-exit_flag = Event()
-ui_is_active = Event()
-configDatabase = None
 
 
 # noinspection PyShadowingNames
-def mirror_process(configDatabase: dict, cmdQueue: Queue, dataQueue: Queue, ui_is_active: Event, exit_flag: Event):
+def mirror_process(pd: ProjectData):
     """
     The actual Artnet router portion of our show runs in its own process,
     and communicates with the main process (and the WebUI process)
     via Queues and Events.
     """
-    ArtnetRouter(configDatabase, cmdQueue, dataQueue, ui_is_active, exit_flag)
+    ArtnetRouter(pd.liveConfig, pd.cmdQueue, pd.dataQueue, pd.ui_is_active, pd.exit_flag)
 
 
 def main():
@@ -55,27 +50,30 @@ def main():
         level=logging.DEBUG,
         datefmt='%Y-%m-%d %H:%M:%S')
 
-    global configDatabase
-    configDatabase = ConfigParser.readConfigFile("./config/config.conf")
+    pd = ProjectData()
+
+    # read the project configuration file and create an editable copy for
+    # the WebUI to work with.
+    pd.liveConfig = ConfigParser.readConfigFile(pd.projectFile)
+    pd.copy_live_config()
 
     # create the Artnet router process
-    exit_flag.clear()
-    ui_is_active.clear()
+    pd.exit_flag.clear()
+    pd.ui_is_active.clear()
 
-    proc1 = Process(target=mirror_process, name="ArtnetRouter",
-                    args=(configDatabase, cmdQueue, dataQueue, ui_is_active, exit_flag))
+    proc1 = Process(target=mirror_process, name="ArtnetRouter", args=(pd,))
     proc1.daemon = True
     proc1.start()
 
     # now, run the WebUI in this process, where it will live 'till the app is closed.
     try:
-        RemiWrapper(configDatabase, cmdQueue, dataQueue, ui_is_active)
+        RemiWrapper(pd)
 
     except KeyboardInterrupt:
-        exit_flag.set()
+        pd.exit_flag.set()
 
     except Exception as e:
-        exit_flag.set()
+        pd.exit_flag.set()
         message = "Terminated by unexpected exception: " + str(e)
         logging.error(message)
 

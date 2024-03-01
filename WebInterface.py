@@ -1,24 +1,13 @@
-import copy
 import json
-from multiprocessing import Event
-from multiprocessing import Queue
 
 from remi import App, start
 
 from ArtnetUtils import clamp
-from UIPanels import *
+from ProjectData import ProjectData
 from UIMenu import FileMenuBuilder
+from UIPanels import *
 
-
-cmdQueue: Queue
-dataQueue: Queue
-ui_is_active: Event
-
-# liveConfig is the config file currently running on the ArtnetRouter
-liveConfig: dict
-
-# configDatabase is a local copy that we can work on in our editors
-configDatabase: dict
+pd: ProjectData
 
 
 def make_unique_tag(data: dict):
@@ -51,24 +40,14 @@ class RemiWrapper:
     """
     Set up local data and run our remi-based web interface.
     """
-    def __init__(self, cfgDb, cmdQ, dataQ, ui_flag):
-        global cmdQueue
-        cmdQueue = cmdQ
 
-        global dataQueue
-        dataQueue = dataQ
+    def __init__(self, projectData: ProjectData):
+        global pd
+        pd = projectData
 
-        global ui_is_active
-        ui_is_active = ui_flag
-
-        global liveConfig
-        liveConfig = cfgDb
-
-        global configDatabase
-        configDatabase = copy.deepcopy(cfgDb)
-
-        webIp = cfgDb['system'].get('ipWebInterface')
-        webPort = int(cfgDb['system'].get('portWebInterface'))
+        # get the web server configuration
+        webIp = pd.liveConfig['system'].get('ipWebInterface')
+        webPort = int(pd.liveConfig['system'].get('portWebInterface'))
 
         start(Flamecaster, address=webIp, port=webPort, start_browser=False, update_interval=0.1, debug=False)
 
@@ -88,11 +67,11 @@ class Flamecaster(App):
         self.devices = dict()
 
     def idle(self):
-        if not ui_is_active.is_set():
-            ui_is_active.set()
-        if not dataQueue.empty():
+        if not pd.ui_is_active.is_set():
+            pd.ui_is_active.set()
+        if not pd.dataQueue.empty():
             # get the JSON status strings from the queue
-            msg = json.loads(dataQueue.get())
+            msg = json.loads(pd.dataQueue.get())
             # if top level key is "name", it's a device status message
             if 'name' in msg:
                 # update the device dictionary with the new status
@@ -132,7 +111,7 @@ class Flamecaster(App):
         menuContainer.attributes['class'] = "Container"
         menuContainer.style['position'] = "absolute"
         menuContainer.style['overflow'] = "auto"
-        #menuContainer.style['background-color'] = "rgb(44,44,44)"
+        # menuContainer.style['background-color'] = "rgb(44,44,44)"
         menuContainer.style['left'] = "10px"
         menuContainer.style['top'] = "40px"
         menuContainer.style['margin'] = "0px"
@@ -147,7 +126,7 @@ class Flamecaster(App):
         btnStatus.onclick.do(self.onclick_btnStatus)
         menuContainer.append(btnStatus, 'btnStatus')
 
-        btnSystem = make_menu_button("System",60)
+        btnSystem = make_menu_button("System", 60)
         btnSystem.onclick.do(self.onclick_btnSystem)
         menuContainer.append(btnSystem, 'btnSystem')
 
@@ -180,10 +159,10 @@ class Flamecaster(App):
         self.status_table = self.statusPanel.children['status_table']
 
         self.systemPanel = SystemSettingsContainer()
-        self.systemPanel.set_system_text(configDatabase.get('system', {}))
+        self.systemPanel.set_system_text(pd.editableConfig.get('system', {}))
 
         self.devicesPanel = DevicesContainer()
-        self.devicesPanel.set_devices_text(configDatabase.get('devices', {}))
+        self.devicesPanel.set_devices_text(pd.editableConfig.get('devices', {}))
 
         self.universesPanel = UniversesContainer()
         self.universesPanel.set_universes_text({})
@@ -235,7 +214,7 @@ class Flamecaster(App):
         if key[-2:] != "Ip":
             newValue = str_to_int(newValue)
 
-        configDatabase['system'][key] = newValue
+        pd.editableConfig['system'][key] = newValue
 
     def on_device_setting_changed(self, table: SingleRowSelectionTable, item, new_value, row, column):
         """Event callback for table item change.
@@ -259,7 +238,7 @@ class Flamecaster(App):
         # figure out where it belongs in the database
         devTag = table.get_row_key(row)
         key = table.get_column_key(column)
-        data = configDatabase.get('devices', {}).get(devTag, {})
+        data = pd.editableConfig.get('devices', {}).get(devTag, {})
 
         data[key] = new_value
 
@@ -284,7 +263,7 @@ class Flamecaster(App):
 
         # figure out where it belongs in the database and put it there.
         devTag = self.universesPanel.deviceTag
-        data = configDatabase.get('devices', {}).get(devTag, {}).get('data', {})
+        data = pd.editableConfig.get('devices', {}).get(devTag, {}).get('data', {})
         uTag = table.get_row_key(row)
         key = table.get_column_key(column)
 
@@ -387,7 +366,7 @@ class Flamecaster(App):
         """
         # to add a device, we add it at the end of the configDatabase devices list,
         # rebuild the table, and redraw it
-        data = configDatabase.get('devices', {})
+        data = pd.editableConfig.get('devices', {})
 
         # generate a unique tag for the new device
         devTag = make_unique_tag(data)
@@ -410,7 +389,7 @@ class Flamecaster(App):
         table = self.devicesPanel.children['pb_table']
         if table.last_clicked_row is not None:
             devTag = table.get_row_key(table.last_clicked_row)
-            data = configDatabase.get('devices', {})
+            data = pd.editableConfig.get('devices', {})
             data.pop(devTag, None)
             # configDatabase['devices'] = data
             self.devicesPanel.set_devices_text(data)
@@ -424,7 +403,7 @@ class Flamecaster(App):
         """
         table = self.universesPanel.children['u_table']
         devTag = self.universesPanel.deviceTag
-        data = configDatabase.get('devices', {}).get(devTag, {}).get('data', {})
+        data = pd.editableConfig.get('devices', {}).get(devTag, {}).get('data', {})
         uTag = make_unique_tag(data)
 
         # add reasonable defaults for the new universe to the device
@@ -447,7 +426,7 @@ class Flamecaster(App):
 
         if table.last_clicked_row is not None:
             uTag = table.get_row_key(table.last_clicked_row)
-            data = configDatabase.get('devices', {}).get(devTag, {}).get('data', {})
+            data = pd.editableConfig.get('devices', {}).get(devTag, {}).get('data', {})
             data.pop(uTag, None)
 
             # configDatabase['devices'][devTag]['data'] = data
@@ -467,7 +446,7 @@ class Flamecaster(App):
         # only react to clicks on a valid, selected data row
         if table.last_clicked_row is not None:
             devTag = table.get_row_key(table.last_clicked_row)
-            data = configDatabase.get('devices', {})
+            data = pd.editableConfig.get('devices', {})
             data = data.get(devTag, {})
             name = data.get('name', '')
             data = data.get('data', {})

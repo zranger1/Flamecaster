@@ -1,20 +1,43 @@
+from typing import Union
+
 from remi.gui import *
 
 from UIConstants import uiTextHeight
 from remi_extensions import SingleRowSelectionTable
 
 
-def make_action_button(text, offset, left):
+def make_action_button(text: str, offset: int, left: Union[str, int]):
+
+    if isinstance(left, int):
+        left = str(offset+left) + 'px'
+
     btn = Button(text)
     btn.attributes['class'] = "Button"
     btn.style['position'] = "absolute"
     btn.style['overflow'] = "auto"
-    btn.style['left'] = str(offset + left) + "px"
+    btn.style['left'] = left
     btn.style['top'] = "24px"
     btn.style['margin'] = "0px"
     btn.style['width'] = "50px"
     btn.style['display'] = "block"
     btn.style['height'] = "20px"
+    return btn
+
+
+def make_menu_button(text: str, top: Union[str, int]):
+    if isinstance(top, int):
+        top = str(top) + 'px'
+
+    btn = Button(text)
+    btn.attributes['class'] = "Button"
+    btn.style['position'] = "absolute"
+    btn.style['overflow'] = "auto"
+    btn.style['left'] = "10px"
+    btn.style['top'] = top
+    btn.style['margin'] = "0px"
+    btn.style['width'] = "150px"
+    btn.style['display'] = "block"
+    btn.style['height'] = "30px"
     return btn
 
 
@@ -27,14 +50,15 @@ class StatusContainer(Container):
         self.style['left'] = "10px"
         self.style['top'] = "10px"
         self.style['margin'] = "0px"
-        self.style['width'] = "427px"
+        self.style['width'] = "96%"
         self.style['display'] = "block"
-        self.style['height'] = "480px"
+        self.style['height'] = "96%"
 
         title = Label("Status")
+        title.style['font-size'] = '110%'
         self.append(title, 'title')
 
-        table = TableWidget(4, 5, True, False, width="427px", height="100%")
+        table = TableWidget(4, 5, True, False, width="100%", height="100%")
 
         for n in range(5):
             table.item_at(0, n).style['height'] = uiTextHeight
@@ -53,19 +77,20 @@ class SystemSettingsContainer(Container):
         super(SystemSettingsContainer, self).__init__(**kwargs)
         self.style['position'] = "absolute"
         self.style['overflow'] = "auto"
-        # self.style['background-color'] = "#80ff9c"
         self.style['left'] = "10px"
         self.style['top'] = "10px"
         self.style['margin'] = "0px"
-        self.style['width'] = "427px"
+        self.style['width'] = "96%"
         self.style['display'] = "block"
-        self.style['height'] = "480px"
+        self.style['height'] = "96%"
+
         title = Label("System Settings")
         title.style['background-color'] = "#80ff9c"
+        title.style['font-size'] = '110%'
         self.append(title, 'title')
 
         rowHeight = 22
-        tx = 30
+        tx = 26
         self.make_control_row("Max FPS", "maxFps", tx)
         tx += rowHeight
         self.make_control_row("Update Interval", "updateInterval", tx)
@@ -122,22 +147,23 @@ class DevicesContainer(Container):
         self.style['left'] = "10px"
         self.style['top'] = "10px"
         self.style['margin'] = "0px"
-        self.style['width'] = "427px"
+        self.style['width'] = "96%"
         self.style['display'] = "block"
-        self.style['height'] = "480px"
+        self.style['height'] = "96%"
 
         # create table for devices
         title = Label("Pixelblazes")
+        title.style['font-size'] = '110%'
         self.append(title, 'pb_title')
 
+        btn = make_action_button("Art-Net", 0, 10)
+        self.append(btn, 'btnEdit')
         btn = make_action_button("+", 200, 10)
         self.append(btn, 'btnAdd')
         btn = make_action_button("-", 200, 80)
         self.append(btn, 'btnRemove')
-        btn = make_action_button("Art-Net", 200, 150)
-        self.append(btn, 'btnEdit')
 
-        table = SingleRowSelectionTable(2, 5, True, True, width="427px", height="100%")
+        table = SingleRowSelectionTable(2, 5, True, True, width="100%", height="100%")
         table.set_column_keys(['name', 'ip', 'pixelCount', 'maxFps', 'renderPattern'])
         table.style['position'] = "absolute"
         table.style['overflow'] = "auto"
@@ -188,15 +214,16 @@ class UniversesContainer(Container):
         self.style['left'] = "10px"
         self.style['top'] = "10px"
         self.style['margin'] = "0px"
-        self.style['width'] = "427px"
+        self.style['width'] = "96%"
         self.style['display'] = "block"
-        self.style['height'] = "480px"
+        self.style['height'] = "96%"
 
         self.deviceTag = None
         self.deviceName = ''
 
         # create table for universe editing
         title = Label("Universe Data")
+        title.style['font-size'] = '110%'
         self.append(title, 'u_title')
 
         btn = make_action_button("Back", 0, 10)
@@ -206,7 +233,7 @@ class UniversesContainer(Container):
         btn = make_action_button("-", 200, 80)
         self.append(btn, 'btnRemove')
 
-        table = SingleRowSelectionTable(2, 6, True, True, width=427, height="100%")
+        table = SingleRowSelectionTable(2, 6, True, True, width="100%", height="100%")
         table.set_column_keys(['net', 'subnet', 'universe', 'startChannel', 'destIndex', 'pixelCount'])
         table.style['position'] = "absolute"
         table.style['overflow'] = "auto"

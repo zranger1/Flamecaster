@@ -7,6 +7,8 @@ from remi import App, start
 
 from ArtnetUtils import clamp
 from UIPanels import *
+from UIMenu import FileMenuBuilder
+
 
 cmdQueue: Queue
 dataQueue: Queue
@@ -109,116 +111,66 @@ class Flamecaster(App):
         # The root Container
         baseContainer = Container()
         baseContainer.attributes['class'] = "Container  "
-        baseContainer.attributes['editor_baseclass'] = "Container"
-        baseContainer.attributes['editor_varname'] = "baseContainer"
-        baseContainer.attributes['editor_tag_type'] = "widget"
-        baseContainer.attributes['editor_newclass'] = "False"
-        baseContainer.attributes['editor_constructor'] = "()"
         baseContainer.style['position'] = "absolute"
         baseContainer.style['overflow'] = "auto"
+        baseContainer.style['background-color'] = "rgb(44,44,44)"
         baseContainer.style['left'] = "0px"
         baseContainer.style['top'] = "0px"
         baseContainer.style['margin'] = "0px"
         baseContainer.style['border-style'] = "solid"
-        baseContainer.style['width'] = "670px"
+        baseContainer.style['width'] = "100%"
         baseContainer.style['display'] = "block"
         baseContainer.style['border-width'] = "1px"
-        baseContainer.style['height'] = "550px"
+        baseContainer.style['height'] = "100%"
+
+        # the menu bar
+        menuBar = FileMenuBuilder.build(self)
+        baseContainer.append(menuBar, 'menuBar')
 
         # The menuContainer on the left side - holds the buttons to switch between the contentWidgets
         menuContainer = Container()
         menuContainer.attributes['class'] = "Container"
-        menuContainer.attributes['editor_baseclass'] = "Container"
-        menuContainer.attributes['editor_varname'] = "menuContainer"
-        menuContainer.attributes['editor_tag_type'] = "widget"
-        menuContainer.attributes['editor_newclass'] = "False"
-        menuContainer.attributes['editor_constructor'] = "()"
         menuContainer.style['position'] = "absolute"
         menuContainer.style['overflow'] = "auto"
+        #menuContainer.style['background-color'] = "rgb(44,44,44)"
         menuContainer.style['left'] = "10px"
-        menuContainer.style['top'] = "10px"
+        menuContainer.style['top'] = "40px"
         menuContainer.style['margin'] = "0px"
         menuContainer.style['border-style'] = "solid"
-        menuContainer.style['width'] = "180px"
+        menuContainer.style['width'] = "170px"
         menuContainer.style['display'] = "block"
         menuContainer.style['border-width'] = "1px"
-        menuContainer.style['height'] = "500px"
+        menuContainer.style['height'] = "90%"
 
-        btnStatus = Button('Status')
-        btnStatus.attributes['class'] = "Button"
-        btnStatus.attributes['editor_baseclass'] = "Button"
-        btnStatus.attributes['editor_varname'] = "btnStatus"
-        btnStatus.attributes['editor_tag_type'] = "widget"
-        btnStatus.attributes['editor_newclass'] = "False"
-        btnStatus.attributes['editor_constructor'] = "('Status')"
-        btnStatus.style['position'] = "absolute"
-        btnStatus.style['overflow'] = "auto"
-        btnStatus.style['left'] = "5px"
-        btnStatus.style['top'] = "10px"
-        btnStatus.style['margin'] = "0px"
-        btnStatus.style['width'] = "150px"
-        btnStatus.style['display'] = "block"
-        btnStatus.style['height'] = "30px"
+        # Buttons for the button menu on the left side
+        btnStatus = make_menu_button("Status", 10)
+        btnStatus.onclick.do(self.onclick_btnStatus)
         menuContainer.append(btnStatus, 'btnStatus')
 
-        btnSystem = Button('System')
-        btnSystem.attributes['class'] = "Button"
-        btnSystem.attributes['editor_baseclass'] = "Button"
-        btnSystem.attributes['editor_varname'] = "btnSystem"
-        btnSystem.attributes['editor_tag_type'] = "widget"
-        btnSystem.attributes['editor_newclass'] = "False"
-        btnSystem.attributes['editor_constructor'] = "('System')"
-        btnSystem.style['position'] = "absolute"
-        btnSystem.style['overflow'] = "auto"
-        btnSystem.style['left'] = "5px"
-        btnSystem.style['top'] = "60px"
-        btnSystem.style['margin'] = "0px"
-        btnSystem.style['width'] = "150px"
-        btnSystem.style['display'] = "block"
-        btnSystem.style['height'] = "30px"
+        btnSystem = make_menu_button("System",60)
+        btnSystem.onclick.do(self.onclick_btnSystem)
         menuContainer.append(btnSystem, 'btnSystem')
 
-        btnDevices = Button('Pixelblazes')
-        btnDevices.attributes['class'] = "Button"
-        btnDevices.attributes['editor_baseclass'] = "Button"
-        btnDevices.attributes['editor_varname'] = "btnDevices"
-        btnDevices.attributes['editor_tag_type'] = "widget"
-        btnDevices.attributes['editor_newclass'] = "False"
-        btnDevices.attributes['editor_constructor'] = "('Pixelblazes')"
-        btnDevices.style['position'] = "absolute"
-        btnDevices.style['overflow'] = "auto"
-        btnDevices.style['left'] = "5px"
-        btnDevices.style['top'] = "110px"
-        btnDevices.style['margin'] = "0px"
-        btnDevices.style['width'] = "150px"
-        btnDevices.style['display'] = "block"
-        btnDevices.style['height'] = "30px"
+        btnDevices = make_menu_button("Pixelblazes", 110)
+        btnDevices.onclick.do(self.onclick_btnDevices)
         menuContainer.append(btnDevices, 'btnDevices')
 
         # Add the menuContainer to the baseContainer and define the listeners for the menu elements
         baseContainer.append(menuContainer, 'menuContainer')
-        baseContainer.children['menuContainer'].children['btnSystem'].onclick.do(self.onclick_btnSystem)
-        baseContainer.children['menuContainer'].children['btnStatus'].onclick.do(self.onclick_btnStatus)
-        baseContainer.children['menuContainer'].children['btnDevices'].onclick.do(self.onclick_btnDevices)
 
         # The contentContainer
         contentContainer = Container()
         contentContainer.attributes['class'] = "Container"
-        contentContainer.attributes['editor_baseclass'] = "Container"
-        contentContainer.attributes['editor_varname'] = "contentContainer"
-        contentContainer.attributes['editor_tag_type'] = "widget"
-        contentContainer.attributes['editor_newclass'] = "False"
-        contentContainer.attributes['editor_constructor'] = "()"
         contentContainer.style['position'] = "absolute"
         contentContainer.style['overflow'] = "auto"
-        contentContainer.style['left'] = "200px"
-        contentContainer.style['top'] = "10px"
+        contentContainer.style['left'] = "190px"
+        contentContainer.style['top'] = "40px"
         contentContainer.style['margin'] = "0px"
         contentContainer.style['border-style'] = "solid"
-        contentContainer.style['width'] = "450px"
+        contentContainer.style['width'] = "480px"
         contentContainer.style['display'] = "block"
         contentContainer.style['border-width'] = "1px"
-        contentContainer.style['height'] = "500px"
+        contentContainer.style['height'] = "90%"
 
         # Create top Level instances for the content Widgets.
         # By defining these as top Level the Widgets live even when they are not shown

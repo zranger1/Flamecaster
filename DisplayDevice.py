@@ -127,8 +127,8 @@ class DisplayDevice:
             is_connected = "false"
         else:
             is_connected = "true" if self.pb.is_connected() else "false"
-        inP = round(self.packets_in / et, 2)
-        outF = round(self.packets_out / et, 2)
+        inP = round(self.packets_in / et, 1)
+        outF = round(self.packets_out / et, 1)
         return json.dumps({"name": self.name, "inPps": inP, "outFps": outF,
                            "ip": self.ip, "maxFps": self.maxFps, "connected": is_connected})
 

@@ -33,11 +33,12 @@ class ArtnetServer:
     # The protocol version is 15
     ARTDMX_HEADER = b'Art-Net\x00\x00P\x00\x0e'
 
-    def __init__(self, udp_port, callback):
+    def __init__(self, listen_ip: str, udp_port: int, callback):
         """Initializes Art-Net server."""
         # server active flag
         self.listen = True
         self.callback = callback
+        self.listen_ip = listen_ip
         self.UDP_PORT = udp_port
 
         self.server_thread = Thread(target=self.__init_socket, daemon=True)
@@ -50,8 +51,10 @@ class ArtnetServer:
         self.socket_server.setsockopt(
             socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-        # TODO - Eventually may need to bind to a specific IP address
-        self.socket_server.bind(('', self.UDP_PORT))  # Listen on any valid IP
+        # TODO - Eventually may need to bind more than one specific interface, which
+        # might mean multiple sockets.  For now, if you need more than one interface,
+        # just bind to 0.0.0.0
+        self.socket_server.bind((self.listen_ip, self.UDP_PORT))  # Listen on any valid IP
 
         while self.listen:
 

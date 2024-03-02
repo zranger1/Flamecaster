@@ -55,6 +55,22 @@ class ConfigParser:
                 self.universes[fragment.address_mask] = [fragment]
 
     @staticmethod
+    def setSystemDefaults(data: dict):
+        """
+        Set reasonable System configuration defaults for any missing system parameters
+        """
+        if not keyExists(data, "system"):
+            data["system"] = dict()
+
+        data["system"]["maxFps"] = getParam(data["system"], "maxFps", 30)
+        data["system"]["statusUpdateIntervalMs"] = getParam(data["system"], "statusUpdateIntervalMs", 3000)
+        data["system"]["pixelsPerUniverse"] = getParam(data["system"], "pixelsPerUniverse", 170)
+        data["system"]["ipArtnet"] = getParam(data["system"], "ipArtnet", "0.0.0.0")
+        data["system"]["portArtnet"] = getParam(data["system"], "portArtnet", 6454)
+        data["system"]["ipWebInterface"] = getParam(data["system"], "ipWebInterface", "127.0.0.1")
+        data["system"]["portWebInterface"] = getParam(data["system"], "portWebInterface", 8081)
+
+    @staticmethod
     def readConfigFile(fileName):
         """
         read JSON blob of configuration data from the specified file
@@ -68,19 +84,11 @@ class ConfigParser:
             f.close()
 
             if data is None:
-                logging.error("%s is not a valid Flamecaster configuration file." % fileName)
+                logging.error("%s is empty, or is not a valid Flamecaster configuration file." % fileName)
+                logging.error("Using default configuration.")
+                data = dict()
 
-            # set some reasonable defaults for any missing system parameters
-            if not keyExists(data, "system"):
-                data["system"] = dict()
-
-            data["system"]["maxFps"] = getParam(data["system"], "maxFps", 30)
-            data["system"]["statusUpdateIntervalMs"] = getParam(data["system"], "statusUpdateIntervalMs", 3000)
-            data["system"]["pixelsPerUniverse"] = getParam(data["system"], "pixelsPerUniverse", 170)
-            data["system"]["ipArtnet"] = getParam(data["system"], "ipArtnet", "127.0.0.1")
-            data["system"]["portArtnet"] = getParam(data["system"], "portArtnet", 6454)
-            data["system"]["ipWebInterface"] = getParam(data["system"], "ipWebInterface", "127.0.0.1")
-            data["system"]["portWebInterface"] = getParam(data["system"], "portWebInterface", 8081)
+            ConfigParser.setSystemDefaults(data)
 
             return data
 

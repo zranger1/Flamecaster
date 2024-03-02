@@ -3,8 +3,8 @@ import json
 from remi import App, start
 
 from ArtnetUtils import clamp
+from ProcessManager import restartArtnetRouter
 from ProjectData import ProjectData
-from UIMenu import FileMenuBuilder
 from UIPanels import *
 
 pd: ProjectData
@@ -67,10 +67,13 @@ class Flamecaster(App):
         self.devices = dict()
 
     def idle(self):
+        # if we're here, that means the web server is running.
+        # activate the UI flag if it's not already set, so we will
+        # start receiving status updates from the Artnet router
         if not pd.ui_is_active.is_set():
             pd.ui_is_active.set()
         if not pd.dataQueue.empty():
-            # get the JSON status strings from the queue
+            # read the JSON status strings from the queue
             msg = json.loads(pd.dataQueue.get())
             # if top level key is "name", it's a device status message
             if 'name' in msg:
@@ -102,21 +105,16 @@ class Flamecaster(App):
         baseContainer.style['border-width'] = "1px"
         baseContainer.style['height'] = "100%"
 
-        # the menu bar
-        menuBar = FileMenuBuilder.build(self)
-        baseContainer.append(menuBar, 'menuBar')
-
         # The menuContainer on the left side - holds the buttons to switch between the contentWidgets
         menuContainer = Container()
         menuContainer.attributes['class'] = "Container"
         menuContainer.style['position'] = "absolute"
         menuContainer.style['overflow'] = "auto"
-        # menuContainer.style['background-color'] = "rgb(44,44,44)"
-        menuContainer.style['left'] = "10px"
-        menuContainer.style['top'] = "40px"
+        menuContainer.style['left'] = "1em"
+        menuContainer.style['top'] = "1em"
         menuContainer.style['margin'] = "0px"
         menuContainer.style['border-style'] = "solid"
-        menuContainer.style['width'] = "170px"
+        menuContainer.style['width'] = "12em"
         menuContainer.style['display'] = "block"
         menuContainer.style['border-width'] = "1px"
         menuContainer.style['height'] = "90%"
@@ -134,6 +132,22 @@ class Flamecaster(App):
         btnDevices.onclick.do(self.onclick_btnDevices)
         menuContainer.append(btnDevices, 'btnDevices')
 
+        btn = make_menu_button("Save", 310)
+        btn.onclick.do(self.menu_save_clicked)
+        menuContainer.append(btn, 'btnSave')
+
+        btn = make_menu_button("Reload", 360)
+        btn.onclick.do(self.menu_reload_clicked)
+        menuContainer.append(btn, 'btnReload')
+
+        btn = make_menu_button("New", 410)
+        btn.onclick.do(self.menu_new_clicked)
+        menuContainer.append(btn, 'btnNew')
+
+        btn = make_menu_button("Exit", 460)
+        btn.onclick.do(self.menu_exit_clicked)
+        menuContainer.append(btn, 'btnExit')
+
         # Add the menuContainer to the baseContainer and define the listeners for the menu elements
         baseContainer.append(menuContainer, 'menuContainer')
 
@@ -142,11 +156,11 @@ class Flamecaster(App):
         contentContainer.attributes['class'] = "Container"
         contentContainer.style['position'] = "absolute"
         contentContainer.style['overflow'] = "auto"
-        contentContainer.style['left'] = "190px"
-        contentContainer.style['top'] = "40px"
+        contentContainer.style['left'] = "13.75em"
+        contentContainer.style['top'] = "1em"
         contentContainer.style['margin'] = "0px"
         contentContainer.style['border-style'] = "solid"
-        contentContainer.style['width'] = "480px"
+        contentContainer.style['width'] = "36em"
         contentContainer.style['display'] = "block"
         contentContainer.style['border-width'] = "1px"
         contentContainer.style['height'] = "90%"
@@ -200,6 +214,9 @@ class Flamecaster(App):
 
         # return the baseContainer as root Widget
         return self.baseContainer
+
+    def on_close(self):
+        super(Flamecaster, self).on_close()
 
     def on_system_setting_changed(self, widget, newValue):
         # find key for this widget in systemPanel
@@ -375,7 +392,6 @@ class Flamecaster(App):
         data[devTag] = {'name': '*New*', 'ip': '0.0.0.0', 'pixelCount': 0, 'maxFps': 30, 'renderPattern': '@preset'}
         # append an empty "data" dictionary to the device
         data[devTag]['data'] = {}
-        # configDatabase['devices'] = data
         self.devicesPanel.set_devices_text(data)
         self.devicesPanel.children['pb_table'].redraw()
 
@@ -391,7 +407,6 @@ class Flamecaster(App):
             devTag = table.get_row_key(table.last_clicked_row)
             data = pd.editableConfig.get('devices', {})
             data.pop(devTag, None)
-            # configDatabase['devices'] = data
             self.devicesPanel.set_devices_text(data)
             table.redraw()
 
@@ -454,3 +469,23 @@ class Flamecaster(App):
             self.universesPanel.set_universes_text(data, name, devTag)
             self.start_universe_editor()
         return
+
+    def menu_new_clicked(self, emitter):
+        pd.clearEditable()
+        pass
+
+    def menu_save_clicked(self, emitter):
+        pd.saveProject()
+        restartArtnetRouter(pd)
+        pass
+
+    def menu_reload_clicked(self, emitter):
+        pd.revertToSaved()
+        restartArtnetRouter(pd)
+        pass
+
+    def menu_exit_clicked(self, emitter):
+        self.close()
+        pd.ui_is_active.clear()
+        pd.exit_flag.set()
+

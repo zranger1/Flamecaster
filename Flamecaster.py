@@ -22,23 +22,9 @@
  v0.5.0   02/23/2024   ZRanger1  Initial pre-alpha release
 """
 import logging
-from multiprocessing import Process
-
-from ArtnetRouter import ArtnetRouter
-from ConfigParser import ConfigParser
+from ProcessManager import startArtnetRouter
 from ProjectData import ProjectData
 from WebInterface import RemiWrapper
-
-
-# noinspection PyShadowingNames
-def mirror_process(pd: ProjectData):
-    """
-    The actual Artnet router portion of our show runs in its own process,
-    and communicates with the main process (and the WebUI process)
-    via Queues and Events.
-    """
-    ArtnetRouter(pd.liveConfig, pd.cmdQueue, pd.dataQueue, pd.ui_is_active, pd.exit_flag)
-
 
 def main():
     print("Flamecaster Artnet Router for Pixelblaze v.0.5.0")
@@ -54,18 +40,13 @@ def main():
 
     # read the project configuration file and create an editable copy for
     # the WebUI to work with.
-    pd.liveConfig = ConfigParser.readConfigFile(pd.projectFile)
-    pd.copy_live_config()
+    pd.loadProject("./config/config.conf")
+    pd.copyLiveToEditable()
 
-    # create the Artnet router process
-    pd.exit_flag.clear()
-    pd.ui_is_active.clear()
+    # create and start the Artnet router in its own process
+    startArtnetRouter(pd)
 
-    proc1 = Process(target=mirror_process, name="ArtnetRouter", args=(pd,))
-    proc1.daemon = True
-    proc1.start()
-
-    # now, run the WebUI in this process, where it will live 'till the app is closed.
+    # now, run the WebUI in the current process, where it will live 'till the app is closed.
     try:
         RemiWrapper(pd)
 
@@ -77,7 +58,7 @@ def main():
         message = "Terminated by unexpected exception: " + str(e)
         logging.error(message)
 
-    proc1.join()
+    pd.routerProcess.join()
     print("Flamecaster shutting down. Thank you for playing!")
 
 

@@ -79,7 +79,7 @@ class SingleRowSelectionTable(TableWidget):
             self.last_clicked_row = row
             self.last_item_clicked = item
             self.last_clicked_row.style['outline'] = "2px dotted blue"
-
+            self.last_clicked_row.style['outline-offset'] = "-2px"
         else:
             self.last_clicked_row = None
             self.last_item_clicked = None

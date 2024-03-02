@@ -1,10 +1,9 @@
 import logging
 import time
-from multiprocessing import Event
-from multiprocessing import Queue
 
 from ArtnetServer import ArtnetServer
 from ArtnetUtils import time_in_millis
+from ProjectData import ProjectData
 from ConfigParser import ConfigParser
 
 
@@ -21,7 +20,6 @@ class ArtnetRouter:
     FrameCount = 0
     delay = 0.033333  # default to 30 fps outgoing limit
     notify_ms = 3000  # status update to UI/log every 3 seconds by default
-    configFileName = "./config/config.conf"
 
     config = None
     universes = []
@@ -29,19 +27,18 @@ class ArtnetRouter:
 
     pixels = []
 
-    def __init__(self, configDatabase: dict, cmdQueue: Queue, dataQueue: Queue, ui_is_active: Event, exit_flag: Event):
+    def __init__(self, pd: ProjectData):
         logging.basicConfig(
             format='%(asctime)s %(levelname)-6s: %(message)s',
             level=logging.DEBUG,
             datefmt='%Y-%m-%d %H:%M:%S')
 
-        self.cmdQueue = cmdQueue
-        self.dataQueue = dataQueue
-        self.ui_is_active = ui_is_active
-        self.exit_flag = exit_flag
+        self.dataQueue = pd.dataQueue
+        self.ui_is_active = pd.ui_is_active
+        self.exit_flag = pd.exit_flag
 
         jim = ConfigParser()
-        self.config, self.deviceList, self.universes = jim.parse(configDatabase)
+        self.config, self.deviceList, self.universes = jim.parse(pd.liveConfig)
 
         # TODO - bind multicast receiver to specific IP address
         # TODO - the way it is now, we can still only handle 256 universes
@@ -53,7 +50,7 @@ class ArtnetRouter:
 
         # loop 'till we're done, listening for packets and forwarding the pixel data
         # to Pixelblazes
-        self.receiver = ArtnetServer(self.config["portArtnet"], self.main_dispatcher)
+        self.receiver = ArtnetServer(self.config["ipArtnet"], self.config["portArtnet"], self.main_dispatcher)
         sleep_time = self.config['statusUpdateIntervalMs'] / 1000
 
         # Periodically send updated status information to the UI queue, where
@@ -70,7 +67,7 @@ class ArtnetRouter:
 
                 for key in self.deviceList:
                     dd = self.deviceList[key]
-                    if ui_is_active.is_set():
+                    if self.ui_is_active.is_set():
                         self.dataQueue.put(dd.getStatusString(elapsedTime / 1000))
                     dd.resetCounters()
 

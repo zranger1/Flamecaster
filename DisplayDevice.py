@@ -5,9 +5,10 @@ own thread, so any I/O waits or errors will not interfere with other operations.
 We expect that Pixelblaze connections may be intermittent and unreliable, so we
 need to handle errors and reconnections gracefully.
 """
+import logging
 import threading
 from threading import Thread
-import logging
+
 import numpy as np
 import select
 
@@ -148,6 +149,7 @@ class DisplayDevice:
         (and subsequent) attempts to use it.
         """
         self.pb = Pixelblaze(self.ip)
+        # always turn off preview frames to save Pixelblaze CPU and bandwidth
         self.pb.setSendPreviewFrames(False)
 
         logging.debug("Pixelblaze: %s (%s) initializing." % (self.name, self.ip))

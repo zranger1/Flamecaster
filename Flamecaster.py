@@ -21,6 +21,7 @@
  Version  Date         Author    Comment
  v0.5.0   02/23/2024   ZRanger1  Initial pre-alpha release
 """
+import argparse
 import logging
 from ProcessManager import startArtnetRouter
 from ProjectData import ProjectData
@@ -36,11 +37,18 @@ def main():
         level=logging.DEBUG,
         datefmt='%Y-%m-%d %H:%M:%S')
 
-    pd = ProjectData()
+    # use argparse to manage our lone (for now) command line argument -  the project configuration file name,
+    # specified by # --file.  If it's not there, we'll use the default.
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file", required=False, default="./config/config.conf",
+                        help="Path to project configuration file to use.  Default is ./config/config.conf")
+    # Parse the command line.
+    args = parser.parse_args()
 
     # read the project configuration file and create an editable copy for
     # the WebUI to work with.
-    pd.loadProject("./config/config.conf")
+    pd = ProjectData()
+    pd.loadProject(args.file)
     pd.copyLiveToEditable()
 
     # create and start the Artnet router in its own process
@@ -60,7 +68,6 @@ def main():
 
     pd.routerProcess.join()
     print("Flamecaster shutting down. Thank you for playing!")
-
 
 if __name__ == '__main__':
     main()

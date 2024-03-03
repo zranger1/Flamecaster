@@ -1,5 +1,5 @@
 import time
-from datetime import timedelta
+
 from multiprocessing import Event, Queue
 from typing import Union
 
@@ -17,6 +17,8 @@ class ProjectData:
         self.projectFile = None
         self.routerProcess = None
         self.startTime = 0
+        self.bytesIn = 0
+        self.bytesOut = 0
         self.cmdQueue = Queue()
         self.dataQueue = Queue()
         self.exit_flag = Event()
@@ -75,6 +77,6 @@ class ProjectData:
 
     def getUptime(self):
         """
-        Returns the number of seconds since the application started in string format.
+        Returns the number of seconds since the application started.
         """
-        return str(timedelta(time.time() - self.startTime))
+        return time.time() - self.startTime

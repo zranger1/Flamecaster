@@ -1,7 +1,10 @@
+import time
+from datetime import timedelta
 from typing import Union
 
 from remi.gui import *
 
+from ProjectData import ProjectData
 from UIConstants import uiTextHeight
 from remi_extensions import SingleRowSelectionTable
 
@@ -15,12 +18,13 @@ def make_action_button(text: str, offset: int, left: Union[str, int]):
     btn.attributes['class'] = "Button"
     btn.style['position'] = "absolute"
     btn.style['overflow'] = "auto"
+    btn.style['border-radius'] = "10px"
     btn.style['left'] = left
-    btn.style['top'] = "24px"
+    btn.style['top'] = "3.5ex"
     btn.style['margin'] = "0px"
-    btn.style['width'] = "50px"
+    btn.style['width'] = "4em"
     btn.style['display'] = "block"
-    btn.style['height'] = "20px"
+    btn.style['height'] = "2.5ex"
     return btn
 
 
@@ -32,12 +36,12 @@ def make_menu_button(text: str, top: Union[str, int]):
     btn.attributes['class'] = "Button"
     btn.style['position'] = "absolute"
     btn.style['overflow'] = "auto"
-    btn.style['left'] = "10px"
+    btn.style['border-radius'] = "20px"
     btn.style['top'] = top
-    btn.style['margin'] = "0px"
-    btn.style['width'] = "150px"
+    btn.style['margin'] = "1em"
+    btn.style['width'] = "10em"
     btn.style['display'] = "block"
-    btn.style['height'] = "30px"
+    btn.style['height'] = "4ex"
     return btn
 
 
@@ -59,6 +63,10 @@ class StatusContainer(Container):
         self.append(title, 'title')
 
         table = TableWidget(4, 5, True, False, width="100%", height="100%")
+        table.style['position'] = "absolute"
+        table.style['overflow'] = "auto"
+        table.style['left'] = "0px"
+        table.style['top'] = "50px"
 
         for n in range(5):
             table.item_at(0, n).style['height'] = uiTextHeight
@@ -87,10 +95,11 @@ class SystemSettingsContainer(Container):
         title = Label("System Settings")
         title.style['background-color'] = "#80ff9c"
         title.style['font-size'] = '110%'
+        title.style['height'] = "49px"
         self.append(title, 'title')
 
         rowHeight = 22
-        tx = 26
+        tx = 50
         self.make_control_row("Max FPS", "maxFps", tx)
         tx += rowHeight
         self.make_control_row("Update Interval", "updateInterval", tx)

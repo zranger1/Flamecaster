@@ -3,8 +3,8 @@ import time
 
 from ArtnetServer import ArtnetServer
 from ArtnetUtils import time_in_millis
-from ProjectData import ProjectData
 from ConfigParser import ConfigParser
+from ProjectData import ProjectData
 
 
 class ArtnetRouter:
@@ -33,6 +33,7 @@ class ArtnetRouter:
             level=logging.DEBUG,
             datefmt='%Y-%m-%d %H:%M:%S')
 
+        self.pd = pd
         self.dataQueue = pd.dataQueue
         self.ui_is_active = pd.ui_is_active
         self.exit_flag = pd.exit_flag
@@ -40,12 +41,10 @@ class ArtnetRouter:
         jim = ConfigParser()
         self.config, self.deviceList, self.universes = jim.parse(pd.liveConfig)
 
-        # TODO - bind multicast receiver to specific IP address
-        # TODO - the way it is now, we can still only handle 256 universes
-        # TODO - regardless of the number of incoming interfaces.  This is
-        # TODO - almost certainly ok, but just for the sake of completeness...
-        # print("Listening for Art-Net on %s:%s" % self.config['ipArtnet'], self.config['portArtnet'])
-        print("Listening for Art-Net on all interfaces at port %s" % self.config['portArtnet'])
+        if self.config['ipArtnet'] == "0.0.0.0":
+            print("Listening for Art-Net on all interfaces at port %s" % self.config['portArtnet'])
+        else:
+            print("Listening for Art-Net on %s:%s" % (self.config['ipArtnet'], self.config['portArtnet']))
         self.notifyTimer = time_in_millis()
 
         # loop 'till we're done, listening for packets and forwarding the pixel data
@@ -109,6 +108,7 @@ class ArtnetRouter:
             u = self.universes[key]
             for k in u:
                 if k.address_mask == addr:
+                    # Art-Net datagram size - 512 bytes of data plus 60 bytes of header
                     k.device.process_pixel_data(data, k.startChannel, k.destIndex, k.pixelCount)
 
     # use each universe's str() method to convert the printable data in self.universes into a JSON string

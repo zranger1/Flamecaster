@@ -1,10 +1,10 @@
 import json
 
 from remi import App, start
+from remi.server import Server
 
 from ArtnetUtils import clamp
 from ProcessManager import restartArtnetRouter
-from ProjectData import ProjectData
 from UIPanels import *
 
 pd: ProjectData
@@ -50,6 +50,16 @@ class RemiWrapper:
         webPort = int(pd.liveConfig['system'].get('portWebInterface'))
 
         start(Flamecaster, address=webIp, port=webPort, start_browser=False, update_interval=0.1, debug=False)
+
+    def start(main_gui_class, **kwargs):
+        """Start the remi server without disturbing the app's root
+        logging setup"""
+        kwargs.pop('debug', False)
+        kwargs.pop('standalone', False)
+
+        logging.getLogger('remi').setLevel(level=logging.CRITICAL)
+
+        Server(main_gui_class, start=True, **kwargs)
 
 
 # noinspection PyUnusedLocal
@@ -488,4 +498,3 @@ class Flamecaster(App):
         self.close()
         pd.ui_is_active.clear()
         pd.exit_flag.set()
-

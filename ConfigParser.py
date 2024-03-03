@@ -24,8 +24,8 @@ class ConfigParser:
         # process our list of Pixelblazes
         devices = getParam(config, "devices")
         if devices is None:
-            logging.error("Error: No output devices found in config file. Exiting")
-            exit(-1)
+            logging.debug("No output devices found in config file.")
+            devices = dict()
 
             # parse device record and add to hardware device list
         for key in devices:
@@ -42,9 +42,9 @@ class ConfigParser:
         :param config: dictionary containing universe info for the given device
         """
         # get key to universe fragments for this device
-        data = getParam(config, "data")
-        if data is None:
-            return None
+        data = getParam(config, "data",dict())
+        #if data is None:
+            #return None
 
         for key in data:
             fragment = UniverseFragment(device, getParam(data, key))
@@ -69,6 +69,7 @@ class ConfigParser:
         data["system"]["portArtnet"] = getParam(data["system"], "portArtnet", 6454)
         data["system"]["ipWebInterface"] = getParam(data["system"], "ipWebInterface", "127.0.0.1")
         data["system"]["portWebInterface"] = getParam(data["system"], "portWebInterface", 8081)
+        data["devices"] = getParam(data, "devices", dict())
 
     @staticmethod
     def readConfigFile(fileName):
@@ -76,25 +77,23 @@ class ConfigParser:
         read JSON blob of configuration data from the specified file
         """
         try:
-            # open config file
-            f = open(fileName)
-
-            # read configuration JSON blob from file
-            data = json.load(f)
-            f.close()
-
-            if data is None:
-                logging.error("%s is empty, or is not a valid Flamecaster configuration file." % fileName)
-                logging.error("Using default configuration.")
-                data = dict()
-
-            ConfigParser.setSystemDefaults(data)
-
-            return data
+            with open(fileName) as f:
+                data = json.load(f)
+                f.close()
 
         except Exception as e:
-            logging.error("Error reading config file %s: %s" % (fileName, str(e)))
-            return None
+            logging.error("Unable to read config file %s: %s" % (fileName, str(e)))
+            data = None
+
+        if data is None:
+            logging.error("%s is empty, or is not a valid Flamecaster configuration file." % fileName)
+            logging.info("Using default configuration.")
+            data = dict()
+
+        ConfigParser.setSystemDefaults(data)
+
+        return data
+
 
     @staticmethod
     def saveConfigFile(fileName, configDatabase):

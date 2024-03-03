@@ -400,8 +400,9 @@ class Flamecaster(App):
 
         # add the new device to the database
         data[devTag] = {'name': '*New*', 'ip': '0.0.0.0', 'pixelCount': 0, 'maxFps': 30, 'renderPattern': '@preset'}
+
         # append an empty "data" dictionary to the device
-        data[devTag]['data'] = {}
+        data[devTag]['data'] = dict()
         self.devicesPanel.set_devices_text(data)
         self.devicesPanel.children['pb_table'].redraw()
 

@@ -25,7 +25,6 @@ class DisplayDevice:
     pixelCount = 0
     pixelsReceived = 0
     maxFps = 1000
-    frame_timer = 0
     ms_per_frame = 0
     packets_in = 0
     packets_out = 0
@@ -46,16 +45,14 @@ class DisplayDevice:
         # We take the lowest of the two.
         self.maxFps = getParam(device, 'maxFps', 1000)
         self.maxFps = min(config["maxFps"], self.maxFps)
-        self.ms_per_frame = 1000 / self.maxFps
-
-        logging.info("DisplayDevice: %s maxFps: %d (%d ms/frame)" % (self.name, self.maxFps, self.ms_per_frame))
+        self.sec_per_frame = 1 / self.maxFps
+        # account for overhead in the frame timer
+        self.sec_per_frame -= 0.05 * self.sec_per_frame
 
         self.sendMethod = self._send_pre_init
 
-        # initialize output pixel array
+        # initialize output pixel buffer
         self.pixels = [0] * self.pixelCount
-
-        print("Length of pixels: ", len(self.pixels))
 
         # start the display device thread
         thread = Thread(target=self.run_thread)
@@ -104,6 +101,7 @@ class DisplayDevice:
         pixelblaze.  If the initial connection attempt failed, the connection
         maintenance task will try again at intervals.
         """
+
         if self.pb is not None and self.pb.is_connected():
             self.sendMethod = self._send_frame
 
@@ -111,15 +109,13 @@ class DisplayDevice:
         """
         Send a frame of packed pixel data to the Pixelblaze
         """
-        t = time_in_millis()
-        if (t - self.frame_timer) >= self.ms_per_frame:
-            if self.pixelsReceived > 0:
-                # go to great lengths to get rid of the spaces, zeros and spurious digits python
-                # *really* wants you to have.  We want to send out as few bytes of data as possible.
-                self.pb.ws.send(
-                    "{\"setVars\":{\"pixels\":[" + ",".join(f"{x:5g}".lstrip(" ") for x in self.pixels) + "]}}")
-                self.packets_out += 1
-            self.frame_timer = t
+
+        if self.pixelsReceived > 0:
+            # go to great lengths to get rid of the spaces, zeros and spurious digits python
+            # *really* wants you to have.  We want to send out as few bytes of data as possible.
+            self.pb.ws.send(
+                "{\"setVars\":{\"pixels\":[" + ",".join(f"{x:5g}".lstrip(" ") for x in self.pixels) + "]}}")
+            self.packets_out += 1
 
     def getStatusString(self, et):
         """
@@ -158,6 +154,8 @@ class DisplayDevice:
         logging.debug("Pixelblaze: %s (%s) initializing." % (self.name, self.ip))
         logging.debug("Connection is %s" % ("open" if self.pb.is_connected() else "NOT open"))
 
+        frame_timer = time.time()
+
         # eat incoming traffic and send data to the Pixelblaze
         while self.run_flag.is_set():
             try:
@@ -166,6 +164,12 @@ class DisplayDevice:
                     if ready[0]:
                         self.pb.wsReceive()
 
+                    # sleep 'till it's time to send a frame
+                    t = time.time()
+                    time.sleep(min(self.sec_per_frame, t - frame_timer))
+                    frame_timer = t
+
+                    # send any data we've received
                     self.sendMethod()
                 else:
                     # sleep for a short interval. Even though pb.open will only retry every 2 seconds

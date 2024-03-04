@@ -191,3 +191,4 @@ def time_in_millis() -> int:
     Utility Method: Returns last 32 bits of the current time in milliseconds
     """
     return int(round(time.time() * 1000)) % 0xFFFFFFFF
+

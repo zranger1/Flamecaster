@@ -1,9 +1,9 @@
 import json
 
-from remi import App, start
+from remi import App
 from remi.server import Server
 
-from ArtnetUtils import clamp, decode_address_int
+from ArtnetUtils import clamp
 from ProcessManager import restartArtnetRouter
 from UIPanels import *
 
@@ -49,9 +49,10 @@ class RemiWrapper:
         webIp = pd.liveConfig['system'].get('ipWebInterface')
         webPort = int(pd.liveConfig['system'].get('portWebInterface'))
 
-        start(Flamecaster, address=webIp, port=webPort, start_browser=False, update_interval=0.1, debug=False)
+        print("Starting Web UI at http://%s:%s" % (webIp, webPort))
+        self.start(Flamecaster, address=webIp, port=webPort, start_browser=False, update_interval=0.1, debug=False)
 
-    def start(main_gui_class, **kwargs):
+    def start(self, main_gui_class, **kwargs):
         """Start the remi server without disturbing the app's root
         logging setup"""
         kwargs.pop('debug', False)
@@ -59,7 +60,23 @@ class RemiWrapper:
 
         logging.getLogger('remi').setLevel(level=logging.CRITICAL)
 
-        Server(main_gui_class, start=True, **kwargs)
+        try:
+            Server(main_gui_class, start=True, **kwargs)
+        except Exception as e:
+            logging.error("Web UI server failed to start: " + str(e))
+            logging.error("Retrying (once) on localhost:8081")
+            logging.error("Please check (and save) your Web UI ip:port configuration in System Settings and try again.")
+            kwargs.pop('address', None)
+            kwargs.pop('port', None)
+
+            # set up fallback Web UI configuration
+            webIp = '127.0.0.1'
+            webPort = 8081
+            pd.liveConfig['system']['ipWebInterface'] = webIp
+            pd.liveConfig['system']['portWebInterface'] = webPort
+            print("Web UI did not start due to exception (probably invalid ip:port address in config file).")
+            print("Attempting restart. Web UI will be available at: http://%s:%s" % (webIp, webPort))
+            Server(main_gui_class, start=True, address=webIp, port=webPort, **kwargs)
 
 
 # noinspection PyUnusedLocal
@@ -239,7 +256,6 @@ class Flamecaster(App):
                 highestUniverse = max(highestUniverse, universe)
 
         return decode_address_int(highestUniverse + 1)
-
 
     def on_close(self):
         # deactivate the UI flag and empty the data queue
@@ -458,14 +474,14 @@ class Flamecaster(App):
         for u in data.values():
             pixelsUsed += u.get('pixelCount', 0)
 
-           # how many pixels are left to be accounted for?
-        pixelsLeft = max(0,devicePixelCount - pixelsUsed)
-        destIndex = max(0,devicePixelCount - pixelsLeft)
+        # how many pixels are left to be accounted for?
+        pixelsLeft = max(0, devicePixelCount - pixelsUsed)
+        destIndex = max(0, devicePixelCount - pixelsLeft)
 
         net, subnet, universe = self.getNextAvailableUniverse()
 
         data[uTag] = {"net": net, "subnet": subnet, "universe": universe, "startChannel": 0, "destIndex": destIndex,
-                      "pixelCount": min(170,pixelsLeft)}
+                      "pixelCount": min(170, pixelsLeft)}
 
         self.universesPanel.set_universes_text(data)
         table.redraw()

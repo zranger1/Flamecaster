@@ -3,7 +3,7 @@ import json
 from remi import App, start
 from remi.server import Server
 
-from ArtnetUtils import clamp
+from ArtnetUtils import clamp, decode_address_int
 from ProcessManager import restartArtnetRouter
 from UIPanels import *
 
@@ -225,23 +225,37 @@ class Flamecaster(App):
         # return the baseContainer as root Widget
         return self.baseContainer
 
+    def getNextAvailableUniverse(self):
+        """
+        Scan the editableConfig for the next available universe number
+        :return:  next available (net, subnet, universe)
+        """
+        data = pd.editableConfig.get('devices', {})
+        highestUniverse = -1
+        for devTag in data:
+            dev = data[devTag]
+            for uTag in dev.get('data', {}):
+                universe = dev['data'][uTag].get('universe', -1)
+                highestUniverse = max(highestUniverse, universe)
+
+        return decode_address_int(highestUniverse + 1)
+
+
     def on_close(self):
+        # deactivate the UI flag and empty the data queue
+        pd.ui_is_active.clear()
+        while not pd.dataQueue.empty():
+            pd.dataQueue.get()
+
         super(Flamecaster, self).on_close()
 
     def on_system_setting_changed(self, widget, newValue):
-        # find key for this widget in systemPanel
-        key = ''
-        for key in self.systemPanel.children:
-            if self.systemPanel.children[key] == widget:
-                break
-
-        # if the last two characters of the keyname are "Ip", keep it in string form
-        # otherwise, it's an integer
-        # TODO - actually validate the Ip address
-        if key[-2:] != "Ip":
-            newValue = str_to_int(newValue)
-
-        pd.editableConfig['system'][key] = newValue
+        """Event callback for system setting change.
+        """
+        # TODO - validate the Ip addresses and port numbers if we can
+        # by the time we get here, if the system key doesn't exist, something
+        # is seriously wrong and we need to know about it.
+        self.systemPanel.get_system_text(pd.editableConfig['system'])
 
     def on_device_setting_changed(self, table: SingleRowSelectionTable, item, new_value, row, column):
         """Event callback for table item change.
@@ -432,11 +446,26 @@ class Flamecaster(App):
         data = pd.editableConfig.get('devices', {}).get(devTag, {}).get('data', {})
         uTag = make_unique_tag(data)
 
-        # add reasonable defaults for the new universe to the device
+        # add reasonable defaults for the new universe to the device.
         # TODO - let's be smarter about filling in universe details based on the
         # TODO - device's pixel count and the number of universes already defined
-        data[uTag] = {"net": 0, "subnet": 0, "universe": 1, "startChannel": 0, "destIndex": 0,
-                      "pixelCount": 170}
+        # TODO - we should also have the option to tightly pack universes because
+        # TODO - I think some programs like XLights operate that way by default.
+        devicePixelCount = pd.editableConfig.get('devices', {}).get(devTag, {}).get('pixelCount', 0)
+
+        # how many pixels have been acounted for in the device's universes?
+        pixelsUsed = 0
+        for u in data.values():
+            pixelsUsed += u.get('pixelCount', 0)
+
+           # how many pixels are left to be accounted for?
+        pixelsLeft = max(0,devicePixelCount - pixelsUsed)
+        destIndex = max(0,devicePixelCount - pixelsLeft)
+
+        net, subnet, universe = self.getNextAvailableUniverse()
+
+        data[uTag] = {"net": net, "subnet": subnet, "universe": universe, "startChannel": 0, "destIndex": destIndex,
+                      "pixelCount": min(170,pixelsLeft)}
 
         self.universesPanel.set_universes_text(data)
         table.redraw()
@@ -497,5 +526,4 @@ class Flamecaster(App):
 
     def menu_exit_clicked(self, emitter):
         self.close()
-        pd.ui_is_active.clear()
         pd.exit_flag.set()

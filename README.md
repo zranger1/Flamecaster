@@ -8,26 +8,25 @@ This is a work in progress.  You are welcome to try it out, and I would love to 
 but please check back frequently for updates, and be aware that it is not yet ready for production use. 
 
 ### State of the Project
-##### Art-Net -> Pixelblaze works
+##### *Art-Net -> Pixelblaze Routing works*
 The good news - You can send Art-Net data from your lighting application to FlameCaster, and on to your Pixelblazes.
 At this point, routing is quite reliable, even as Pixelblazes and Art-Net sources come and go at random. There is still
 work to be done to see if we can improve frame rates for Pixelblazes with large (>500) numbers of pixels. This appears
 to have to do with the number and size of websocket messages being sent. 
 
-##### Web UI
-There's a Web UI! You can view and configure Flamecaster from your tablet, phone, etc.  It still has a few features
+##### *Web UI (There's a Web UI!)* 
+You can view and configure Flamecaster from your tablet, phone, etc.  It still has a few features
 to be added though.  For one thing, it doesn't help you with Art-Net universe and channel numbering yet, so you will
 have to do a little arithmetic to get set up correctly.  (From the "Pixelblazes" panel, double click on a Pixelblaze,
 or select it and press the "Art-Net" button to see the Art-Net universe and channel settings.
 
-##### Documentation
+##### *Documentation*
 There will be actual documentation someday.  I promise.  If you're familiar with Pixelblaze and Art-Net, it's mostly
 self-explanatory though.  
 
 
 ### Requirements
 Requires Python 3.10+, and the following libraries from pypl:
-- pixelblaze-client
 - numpy
 - websocket-client
 - remi
@@ -39,27 +38,30 @@ lighting software.  (This has the added advantage of keeping your Art-Net traffi
 
 
 ### Installation and Usage
-1. Install Python 3.10 or later on your system according to your OS's instructions.
-2. Install the required libraries using pip:
+1. Clone or download this repository to your system.
+2. Install and load the included 'Artnet Receiver' pattern on your Pixelblazes.
+3. Install Python 3.10 or later on your system according to your OS's instructions.
+4. Install the required Python libraries using pip:
 ```
-pip install pixelblaze-client numpy websocket-client remi
+pip install numpy websocket-client remi
 ```
-3. Download the Flamecaster source code from the repository.
-4. Run Flamecaster from the command line:
+5. Run Flamecaster from the command line:
 ```
-python flamecaster.py
+python -m Flamecaster
 ```
 
 ### Notes
 - Art-Net DMX is currently the only supported protocol.  Yes, you'll have to divide your project into 170-pixel chunks!
-- Artsync is currently not supported.
-- X-Lights users:  X-Lights doesn't quite understand the whole routing thing.  It wants each Artnet controller to
+Artsync is currently not supported.
+- X-Lights users:  X-Lights doesn't quite get this whole routing thing.  It wants each Artnet controller to
 have its own IP address.   I'm not sure how to best work around this yet.
 - Automatic Pixelblaze detection is not yet implemented.  It's coming, but you'll need to use static IP addresses for
 now.  This means you'll need a router that can act as a DHCP server. (Most can, but be sure before you invest in one.)
 In any case, I strongly recommend against using the Pixelblaze's built-in wireless AP in an Artnet-driven project.
 It is not designed for the high traffic level and may result in both slow network and slow Pixelblaze LED rendering
 performance.
+- Pixelblaze v3 hardware is **highly** recommended.  You can use a Pixelblaze 2, but you'll need to restrict outgoing frame rate to
+10fps or less to avoid saturating the Pixelblaze's websocket connection.  
 
 ### Acknowledgements
 Uses the REMI library to create its web interface.

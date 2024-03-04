@@ -4,6 +4,7 @@ from typing import Union
 
 from remi.gui import *
 
+from ArtnetUtils import decode_address_int
 from ProjectData import ProjectData
 from UIConstants import uiTextHeight
 from remi_extensions import SingleRowSelectionTable
@@ -288,9 +289,17 @@ class UniversesContainer(Container):
                 table.item_at(row, n).css_height = uiTextHeight
 
             table.set_row_key(row, key)
-            table.item_at(row, 0).set_text(str(data.get(key).get('net', 0)))
-            table.item_at(row, 1).set_text(str(data.get(key).get('subnet', 0)))
-            table.item_at(row, 2).set_text(str(data.get(key).get('universe', 0)))
+
+            # make sure universe, subnet and net are all correct
+            universe = data.get(key).get('universe', 0)
+            subnet = data.get(key).get('subnet', 0)
+            net = data.get(key).get('net', 0)
+            if universe > 15:
+                universe,subnet,net = decode_address_int(universe)
+
+            table.item_at(row, 0).set_text(str(net))
+            table.item_at(row, 1).set_text(str(subnet))
+            table.item_at(row, 2).set_text(str(universe))
             table.item_at(row, 3).set_text(str(data.get(key).get('startChannel', 0)))
             table.item_at(row, 4).set_text(str(data.get(key).get('destIndex', 0)))
             table.item_at(row, 5).set_text(str(data.get(key).get('pixelCount', 0)))

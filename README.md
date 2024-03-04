@@ -8,11 +8,12 @@ This is a work in progress.  You are welcome to try it out, and I would love to 
 but please check back frequently for updates, and be aware that it is not yet ready for production use. 
 
 ### State of the Project
-##### *Art-Net -> Pixelblaze Routing works*
-The good news - You can send Art-Net data from your lighting application to FlameCaster, and on to your Pixelblazes.
+##### *Art-Net -> Pixelblaze Routing works!*
+You can send Art-Net data from your lighting application to FlameCaster, and on to your Pixelblazes!
 At this point, routing is quite reliable, even as Pixelblazes and Art-Net sources come and go at random. There is still
 work to be done to see if we can improve frame rates for Pixelblazes with large (>500) numbers of pixels. This appears
-to have to do with the number and size of websocket messages being sent. 
+to be a function of both wi-fi signal quality and the size of the websockets messages that must be sent for
+each frame.  
 
 ##### *Web UI (There's a Web UI!)* 
 You can view and configure Flamecaster from your tablet, phone, etc.  It still has a few features
@@ -22,7 +23,18 @@ or select it and press the "Art-Net" button to see the Art-Net universe and chan
 
 ##### *Documentation*
 There will be actual documentation someday.  I promise.  If you're familiar with Pixelblaze and Art-Net, it's mostly
-self-explanatory though.  
+self-explanatory though.
+
+The basics are:
+- When editing, press the "+" button to add a thing, and the "-" button to remove one.
+- The left-hand panel is the main menu.
+- To see the list of Pixelblazes, where you can add, edit or remove devices, press the "Pixelblazes" button in the left-hand panel.
+- To add, edit or remove Art-Net sources, select a Pixelblaze and press the "Art-Net" button in the
+left-hand panel, or double click the Pixelblaze you want to edit.  
+- After you've edited things to your liking, **press "Save" in the left-hand panel to save your changes and 
+restart the server with your new settings.**  (This will momentarily disconnect all Pixelblazes, so don't do it
+during a show!)
+- Changes to WebUI address:port won't be active until the next time you start Flamecaster.
 
 
 ### Requirements
@@ -61,7 +73,12 @@ In any case, I strongly recommend against using the Pixelblaze's built-in wirele
 It is not designed for the high traffic level and may result in both slow network and slow Pixelblaze LED rendering
 performance.
 - Pixelblaze v3 hardware is **highly** recommended.  You can use a Pixelblaze 2, but you'll need to restrict outgoing frame rate to
-10fps or less to avoid saturating the Pixelblaze's websocket connection.  
+10fps or less to avoid saturating the Pixelblaze's websocket connection. 
+- How shall I say this?   Wi-Fi: It's way twitchier than anyone would like.  Before you take a wireless LED project live in
+an adverse environment (pretty much anywhere in public, really), be prepared to spend time optimizing router setup, channel selection, antenna positioning, and
+anything and everything else that might improve the signal.  
+- Don't try to send your Art-Net traffic to Flamecaster over Wi-Fi.  Especially not the same Wi-Fi network
+you're using for your Pixelblazes.  S...l...o...w...  Slow and cranky.   
 
 ### Acknowledgements
 Uses the REMI library to create its web interface.
@@ -77,3 +94,8 @@ More information about pixelblaze-client can be found at: https://github.com/zra
 ```
 v0.5.0   03/03/2024 Initial pre-alpha release
 ```
+
+### Donation
+If this project saves you time and effort, please consider donating to help support my Open Source work.  Every donut or cup of coffee is a wonderful help!  :-)
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=YM9DKUT5V34G8)

@@ -9,7 +9,7 @@ import logging
 import threading
 from threading import Thread
 
-import numpy as np
+# import numpy as np
 import select
 
 from ArtnetUtils import *
@@ -53,7 +53,9 @@ class DisplayDevice:
         self.sendMethod = self._send_pre_init
 
         # initialize output pixel array
-        self.pixels = np.zeros(self.pixelCount, dtype=np.float32)
+        self.pixels = [0] * self.pixelCount
+
+        print("Length of pixels: ", len(self.pixels))
 
         # start the display device thread
         thread = Thread(target=self.run_thread)
@@ -77,7 +79,7 @@ class DisplayDevice:
 
         # copy the pixel data into the display device's pixel buffer
         index = 3 * startChannel
-        pixNum = destPixel
+        pixNum: int = destPixel
 
         # Pack the RGB color data into a single 32-bit fixed point float for compact transmission to a Pixelblaze.
         # This is done by shifting red, green and blue values into a 32-bit integer and dividing
@@ -112,9 +114,10 @@ class DisplayDevice:
         t = time_in_millis()
         if (t - self.frame_timer) >= self.ms_per_frame:
             if self.pixelsReceived > 0:
-                d = ("{\"setVars\":{\"pixels\":" +
-                     np.array2string(self.pixels, precision=5, separator=',', suppress_small=True) + "}}")
-                self.pb.wsSendString(d)
+                # go to great lengths to get rid of the spaces, zeros and spurious digits python
+                # *really* wants you to have.  We want to send out as few bytes of data as possible.
+                self.pb.ws.send(
+                    "{\"setVars\":{\"pixels\":[" + ",".join(f"{x:5g}".lstrip(" ") for x in self.pixels) + "]}}")
                 self.packets_out += 1
             self.frame_timer = t
 

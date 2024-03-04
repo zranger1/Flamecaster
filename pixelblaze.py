@@ -234,7 +234,6 @@ class Pixelblaze:
                         return message
                 return message
 
-
     def sendPing(self):
         """Send a Ping message to the Pixelblaze and wait for the Acknowledgement response.
 
@@ -242,15 +241,6 @@ class Pixelblaze:
             Union[str, None]: The acknowledgement message received from the Pixelblaze, or None if a timeout occurred.
         """
         return self.wsSendJson({"ping": True})
-
-    def wsSendString(self, command: str):
-        """Send a command with a preformatted string as data, and don't wait around for a response.
-        (but still do all the connection maintenance stuff)
-
-        Args:
-            command str: string
-        """
-        self.ws.send(command)
 
     def wsSendJson(self, command: dict, *, expectedResponse=None) -> Union[str, bytes, None]:
         """Send a JSON-formatted command to the Pixelblaze, and optionally wait for a suitable response.
@@ -312,7 +302,6 @@ class Pixelblaze:
                 self.connectionBroken = True
                 self.close()
                 self.open()  # try reopening  # raise
-
 
     def wsSendBinary(self, binaryMessageType: MessageTypes, blob: bytes, *, expectedResponse: str = None):
         """Send a binary command to the Pixelblaze, and optionally wait for a suitable response.
@@ -395,7 +384,6 @@ class Pixelblaze:
                 self.close()
                 self.open()  # raise
 
-
     def getPeers(self):
         """A new command, added to the API but not yet implemented as of v2.29/v3.24, that will return
          a list of all the Pixelblazes visible on the local network segment.
@@ -406,7 +394,6 @@ class Pixelblaze:
         self.wsSendJson({"getPeers": True})
         return self.wsReceive(binaryMessageType=None)
 
-
     def setSendPreviewFrames(self, doUpdates: bool):
         """Set whether the Pixelblaze sends pattern preview frames.
 
@@ -415,10 +402,8 @@ class Pixelblaze:
         """
         self.wsSendJson({"sendUpdates": doUpdates})
 
-
     def getPreviewFrame(self) -> bytes:
         return self.latestPreview
-
 
     # --- PATTERNS tab: SEQUENCER section
 
@@ -426,7 +411,6 @@ class Pixelblaze:
         Off = 0
         ShuffleAll = 1
         Playlist = 2
-
 
     def setSequencerMode(self, sequencerMode: SequencerModes, *, saveToFlash: bool = False):
         """Sets the sequencer mode to one of the available sequencerModes (Off, ShuffleAll, or Playlist).
@@ -438,7 +422,6 @@ class Pixelblaze:
         """
         self.wsSendJson({"sequencerMode": sequencerMode, "save": saveToFlash}, expectedResponse=None)
 
-
     def setSequencerState(self, sequencerState: bool):
         """Set the run state of the sequencer.
 
@@ -448,7 +431,6 @@ class Pixelblaze:
         """
         self.wsSendJson({"runSequencer": sequencerState})
 
-
     def getActiveVariables(self) -> dict:
         """Gets the names and values of all variables exported by the current pattern.
 
@@ -457,7 +439,6 @@ class Pixelblaze:
             as the key and variableValue as the value.
         """
         return json.loads(self.wsSendJson({"getVars": True}, expectedResponse="vars")).get('vars')
-
 
     def setActiveVariables(self, dictVariables: dict):
         """Sets the values of one or more variables exported by the current pattern.
@@ -470,13 +451,11 @@ class Pixelblaze:
         """
         self.wsSendJson({"setVars": dictVariables})
 
-
     # --- PATTERNS tab: SAVED PATTERNS section: convenience functions
     def requestConfigSequencer(self):
         """Retrieves the Sequencer state when the Pixelblaze gets around to it
         """
         self.requestConfigSettings()
-
 
     def getActivePattern(self) -> str:
         """Returns the ID of the pattern currently running on the Pixelblaze.
@@ -485,7 +464,6 @@ class Pixelblaze:
             str: The patternId of the current pattern, if any; otherwise an empty string.
         """
         return self.latestSequencer.get('activeProgram').get('activeProgramId', "")
-
 
     def sendPatternToRenderer(self, bytecode: bytes, controls=None):
         """Sends a blob of bytecode and a JSON dictionary of UI controls to the Renderer.
@@ -503,12 +481,10 @@ class Pixelblaze:
         self.wsSendJson({"setControls": controls}, expectedResponse="ack")
         self.wsSendJson({"pause": False}, expectedResponse="ack")
 
-
     # --- SETTINGS menu
 
     def requestConfigSettings(self):
         self.wsSendJson({"getConfig": True})
-
 
     def getPixelCount(self) -> Union[int, None]:
         """Returns the number of LEDs connected to the Pixelblaze.
@@ -517,7 +493,6 @@ class Pixelblaze:
             int: The number of LEDs connected to the Pixelblaze.
         """
         return self.latestConfig.get('pixelCount', None)
-
 
     def pauseRenderer(self, doPause: bool):
         """Pause rendering. Lasts until unpause() is called or the Pixelblaze is reset.
@@ -531,7 +506,6 @@ class Pixelblaze:
             doPause (bool): If True, pause the render engine; if False, resume it.
         """
         self.wsSendJson({"pause": doPause}, expectedResponse="ack")
-
 
     def setCacheRefreshTime(self, seconds: int):
         """Set the interval, in seconds, after which calls to `getPatternList()` clear the pattern cache

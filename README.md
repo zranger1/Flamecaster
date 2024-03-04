@@ -16,10 +16,7 @@ to be a function of both wi-fi signal quality and the size of the websockets mes
 each frame.  
 
 ##### *Web UI (There's a Web UI!)* 
-You can view and configure Flamecaster from your tablet, phone, etc.  It still has a few features
-to be added though.  For one thing, it doesn't help you with Art-Net universe and channel numbering yet, so you will
-have to do a little arithmetic to get set up correctly.  (From the "Pixelblazes" panel, double click on a Pixelblaze,
-or select it and press the "Art-Net" button to see the Art-Net universe and channel settings.
+You can view and configure Flamecaster from your tablet, phone, etc.  All the basics are working, and refinements are in progress.
 
 ##### *Documentation*
 There will be actual documentation someday.  I promise.  If you're familiar with Pixelblaze and Art-Net, it's mostly

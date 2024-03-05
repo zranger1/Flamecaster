@@ -3,7 +3,7 @@ import json
 from remi import App
 from remi.server import Server
 
-from ArtnetUtils import clamp
+from ArtnetUtils import clamp, artnet_to_int
 from ProcessManager import restartArtnetRouter
 from UIPanels import *
 
@@ -252,8 +252,11 @@ class Flamecaster(App):
         for devTag in data:
             dev = data[devTag]
             for uTag in dev.get('data', {}):
-                universe = dev['data'][uTag].get('universe', -1)
-                highestUniverse = max(highestUniverse, universe)
+                net = dev['data'][uTag].get('net', 0)
+                subnet = dev['data'][uTag].get('subnet', 0)
+                universe = dev['data'][uTag].get('universe', 0)
+                mask = artnet_to_int(net, subnet, universe)
+                highestUniverse = max(highestUniverse, mask)
 
         return decode_address_int(highestUniverse + 1)
 

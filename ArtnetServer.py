@@ -8,6 +8,7 @@ https://github.com/cpvalente/stupidArtnet
 2/2024 ZRanger1
 """
 
+import logging
 import socket
 from threading import Thread
 
@@ -63,18 +64,20 @@ class ArtnetServer:
             # check the header -- we only support Art-Net DMX
             if data[:12] == ArtnetServer.ARTDMX_HEADER:
 
-                # check sequence numbers to see if we've missed a packet
-                # if there's a >50% packet loss it's not our problem
+                # TODO - check packet sequence number
+                # At worst, we should track this per-universe and drop out-of-order
+                # packets, or if the sequence number is too old, indicating an episode of very high
+                # packet loss, restart the sequence.
+                # Right now, we're just going to ignore the sequence number
                 new_seq = data[12]
                 old_seq = self.sequence
+                self.sequence = new_seq
 
-                if new_seq == 0x00 or new_seq > old_seq or old_seq - new_seq > 0x80:
-                    self.sequence = new_seq
+                # pass the buffer to the callback function
+                # for distribution to interested pixelblazes
+                addr = int.from_bytes(data[14:16], byteorder='little')
+                self.callback(addr, bytearray(data)[18:])
 
-                    # make an array from the buffer and pass it on
-                    # for distribution to the pixelblazes
-                    addr = int.from_bytes(data[14:16], byteorder='little')
-                    self.callback(addr, bytearray(data)[18:])
 
     def __del__(self):
         """Graceful shutdown."""

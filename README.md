@@ -1,6 +1,4 @@
 ## FlameCaster Art-Net Router for Pixelblaze
-Extremely(!) early Alpha version.  
-
 Receives data packets over Art-Net and distributes them via websockets to one
 or more Pixelblazes
 
@@ -17,6 +15,7 @@ each frame.
 
 ##### *Web UI (There's a Web UI!)* 
 You can view and configure Flamecaster from your tablet, phone, etc.  All the basics are working, and refinements are in progress.
+By default, the web UI is available at http://localhost:8081.  You can change the address and port from the settings panel.
 
 ##### *Documentation*
 There will be actual documentation someday.  I promise.  If you're familiar with Pixelblaze and Art-Net, it's mostly
@@ -62,8 +61,6 @@ python -m Flamecaster
 ### Notes
 - Art-Net DMX is currently the only supported protocol.  Yes, you'll have to divide your project into 170-pixel chunks!
 Artsync is currently not supported.
-- X-Lights users:  X-Lights doesn't quite get this whole routing thing.  It wants each Artnet controller to
-have its own IP address.   I'm not sure how to best work around this yet.
 - Automatic Pixelblaze detection is not yet implemented.  It's coming, but you'll need to use static IP addresses for
 now.  This means you'll need a router that can act as a DHCP server. (Most can, but be sure before you invest in one.)
 In any case, I strongly recommend against using the Pixelblaze's built-in wireless AP in an Artnet-driven project.
@@ -90,6 +87,7 @@ More information about pixelblaze-client can be found at: https://github.com/zra
 ### Version History
 ```
 v0.5.0   03/03/2024 Initial pre-alpha release
+v0.5.1   03/04/2024 Update to packet handling to make Xlights happier
 ```
 
 ### Donation

@@ -24,6 +24,7 @@ class DisplayDevice:
     name = "<no device>"
     pixelCount = 0
     pixelsReceived = 0
+    pixelsUpdated = 0
     maxFps = 1000
     ms_per_frame = 0
     packets_in = 0
@@ -73,6 +74,7 @@ class DisplayDevice:
 
         self.packets_in += 1
         self.pixelsReceived += count
+        self.pixelsUpdated += count
 
         # copy the pixel data into the display device's pixel buffer
         index = 3 * startChannel
@@ -110,12 +112,13 @@ class DisplayDevice:
         Send a frame of packed pixel data to the Pixelblaze
         """
 
-        if self.pixelsReceived > 0:
+        if self.pixelsUpdated > 0:
             # go to great lengths to get rid of the spaces, zeros and spurious digits python
             # *really* wants you to have.  We want to send out as few bytes of data as possible.
             self.pb.ws.send(
                 "{\"setVars\":{\"pixels\":[" + ",".join(f"{x:5g}".lstrip(" ") for x in self.pixels) + "]}}")
             self.packets_out += 1
+            self.pixelsUpdated = 0
 
     def getStatusString(self, et):
         """

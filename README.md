@@ -1,4 +1,4 @@
-## FlameCaster Art-Net Router for Pixelblaze
+## Flamecaster Art-Net Router for Pixelblaze
 Receives data packets over Art-Net and distributes them via websockets to one
 or more Pixelblazes
 

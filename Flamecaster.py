@@ -28,7 +28,7 @@ from ProjectData import ProjectData
 from WebInterface import RemiWrapper
 
 def main():
-    print("Flamecaster Artnet Router for Pixelblaze v.0.5.1")
+    print("Flamecaster Artnet Router for Pixelblaze v.0.5.2")
     print("Copyright 2024 ZRanger1 - Apache 2.0 License")
 
     # configure logging

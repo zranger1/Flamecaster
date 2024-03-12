@@ -85,49 +85,46 @@ class ArtnetServer:
 
     def send_artnet_poll_reply(self, address):
         """
-        Send an Art-Net PollReply packet to the specified address. Most
-        of this data is um... totally made up.  Seems to work though.
+        Send an Art-Net PollReply packet to the specified address. This lets
+        Art-Net controllers know that we're here and what we can do.
         :param address:
         :return:
         """
         # Art-Net header
         header = b'Art-Net\x00'
 
-        # OpCode for ArtPollReply
+        # OpCode for ArtPollReply packet
         opcode = (0x2100).to_bytes(2, byteorder='little')
 
-        # Giant yard sale of device information!
-        # IP Address, Port Number, Version Info, NetSwitch, SubSwitch, OEM, Ubea Version, Status1, ESTA Manufacturer,
-        # Short Name, Long Name, Node Report, NumPorts, PortTypes, GoodInput, GoodOutput, SwIn, SwOut, SwVideo,
-        # SwMacro, SwRemote, Spare, Style, MAC Address, BindIP, BindIndex, Status2, Filler
-        ip_address = socket.inet_aton('127.0.0.1')  # Replace with your device's IP address
-        port_number = (0x1936).to_bytes(2, byteorder='big')  # Replace with your device's Port-Address
-        version_info = (1).to_bytes(2, byteorder='big')  # Replace with your device's firmware version
-        net_switch = (0).to_bytes(1, byteorder='big')  # Replace with your device's NetSwitch
-        sub_switch = (0).to_bytes(1, byteorder='big')  # Replace with your device's SubSwitch
-        oem = (0).to_bytes(2, byteorder='big')  # Replace with your device's OEM value
-        ubea_version = (0).to_bytes(1, byteorder='big')  # Replace with your device's Ubea Version
-        status1 = (0).to_bytes(1, byteorder='big')  # Replace with your device's Status1
-        esta_manufacturer = (0).to_bytes(2, byteorder='big')  # Replace with your device's ESTA Manufacturer
-        short_name = 'FC'.ljust(18, '\x00').encode()  # Replace with your device's Short Name
-        long_name = 'Flamecaster'.ljust(64, '\x00').encode()  # Replace with your device's Long Name
-        node_report = 'No errors'.ljust(64, '\x00').encode()  # Replace with your device's Node Report
-        num_ports = (0).to_bytes(2, byteorder='big')  # Replace with your device's NumPorts
-        port_types = (0).to_bytes(4, byteorder='big')  # Replace with your device's PortTypes
-        good_input = (0).to_bytes(4, byteorder='big')  # Replace with your device's GoodInput
-        good_output = (0).to_bytes(4, byteorder='big')  # Replace with your device's GoodOutput
-        sw_in = (0).to_bytes(4, byteorder='big')  # Replace with your device's SwIn
-        sw_out = (0).to_bytes(4, byteorder='big')  # Replace with your device's SwOut
-        sw_video = (0).to_bytes(1, byteorder='big')  # Replace with your device's SwVideo
-        sw_macro = (0).to_bytes(1, byteorder='big')  # Replace with your device's SwMacro
-        sw_remote = (0).to_bytes(1, byteorder='big')  # Replace with your device's SwRemote
-        spare = (0).to_bytes(4, byteorder='big')  # Replace with your device's Spare
-        style = (0).to_bytes(1, byteorder='big')  # Replace with your device's Style
-        mac_address = b'\x00\x00\x00\x00\x00\x00'  # Replace with your device's MAC Address
-        bind_ip = socket.inet_aton('127.0.0.1')  # Replace with your device's BindIP
-        bind_index = (0).to_bytes(1, byteorder='big')  # Replace with your device's BindIndex
-        status2 = (0).to_bytes(1, byteorder='big')  # Replace with your device's Status2
-        filler = (0).to_bytes(26, byteorder='big')  # Replace with your device's Filler
+        # Giant yard sale of device information!  Most of this doesn't apply to us.
+        ip_address =  socket.inet_aton(self.listen_ip)  # Flamecaster's listen IP address
+        port_number = self.UDP_PORT.to_bytes(2, byteorder='big')  # Flamecaster's listen port number
+        version_info = (1).to_bytes(2, byteorder='big')  #  firmware version
+        net_switch = (0).to_bytes(1, byteorder='big')  # NetSwitch
+        sub_switch = (0).to_bytes(1, byteorder='big')  # SubSwitch
+        oem = (0).to_bytes(2, byteorder='big')  # OEM value?
+        ubea_version = (0).to_bytes(1, byteorder='big')  # Ubea Version?
+        status1 = (0).to_bytes(1, byteorder='big')  # device Status1
+        esta_manufacturer = (0).to_bytes(2, byteorder='big')  # ESTA Manufacturer code?
+        short_name = 'FC'.ljust(18, '\x00').encode()  # Short Name
+        long_name = 'Flamecaster'.ljust(64, '\x00').encode()  # Long Name
+        node_report = 'No errors'.ljust(64, '\x00').encode()  # Node Report
+        num_ports = (0).to_bytes(2, byteorder='big')  #  NumPorts
+        port_types = (0).to_bytes(4, byteorder='big')  # PortTypes
+        good_input = (0).to_bytes(4, byteorder='big')  # GoodInput
+        good_output = (0).to_bytes(4, byteorder='big')  # GoodOutput
+        sw_in = (0).to_bytes(4, byteorder='big')  # SwIn
+        sw_out = (0).to_bytes(4, byteorder='big')  # SwOut
+        sw_video = (0).to_bytes(1, byteorder='big')  # SwVideo
+        sw_macro = (0).to_bytes(1, byteorder='big')  # SwMacro
+        sw_remote = (0).to_bytes(1, byteorder='big')  # SwRemote
+        spare = (0).to_bytes(4, byteorder='big')  # Spare
+        style = (0).to_bytes(1, byteorder='big')  # Style
+        mac_address = b'\x00\x00\x00\x00\x00\x00'  # MAC Address
+        bind_ip = socket.inet_aton(self.listen_ip)  # Flamecaster's BindIP
+        bind_index = (0).to_bytes(1, byteorder='big')  # BindIndex
+        status2 = (0).to_bytes(1, byteorder='big')  #  Status2
+        filler = (0).to_bytes(26, byteorder='big')  # Filler
 
         # Combine to form the Art-Net PollReply packet
         artnet_poll_reply_packet = (header + opcode + ip_address + port_number + version_info + net_switch +
@@ -138,7 +135,6 @@ class ArtnetServer:
 
         # Send the packet
         self.socket_server.sendto(artnet_poll_reply_packet, address)
-
 
     def __del__(self):
         """Graceful shutdown."""

@@ -17,9 +17,6 @@
 
  Copyright 2024 ZRanger1
  Apache 2.0 License - see the github repository for details.
-
- Version  Date         Author    Comment
- v0.5.0   02/23/2024   ZRanger1  Initial pre-alpha release
 """
 import argparse
 import logging
@@ -28,7 +25,7 @@ from ProjectData import ProjectData
 from WebInterface import RemiWrapper
 
 def main():
-    print("Flamecaster Artnet Router for Pixelblaze v.0.5.2")
+    print("Flamecaster Artnet Router for Pixelblaze v.0.5.3")
     print("Copyright 2024 ZRanger1 - Apache 2.0 License")
 
     # configure logging

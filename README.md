@@ -88,6 +88,8 @@ More information about pixelblaze-client can be found at: https://github.com/zra
 ```
 v0.5.0   03/03/2024 Initial pre-alpha release
 v0.5.1   03/04/2024 Update to packet handling to make Xlights happier
+v0.5.2   03/05/2024 Add ArtPollReply support for Resolume
+v0.5.3   03/06/2024 Minor bug fixes and performance improvements 
 ```
 
 ### Donation

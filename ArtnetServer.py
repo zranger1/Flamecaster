@@ -26,20 +26,28 @@ class ArtnetServer:
     socket_server = None
     callback = None
     sequence = 0
+    pollReplyPacket = None
 
-    # Art-Net packet header to use for validation
-    # The packet header spells Art-Net
-    # The definition is for DMX Artnet (OPCode 0x50)
-    # The protocol version is 15
+    """
+    Art-Net packet header to use for validation
+    Here's the full header, including the OpCode and protocol version)
+    This definition is for DMX Artnet (OPCode 0x50), protocol version 15.    
     ARTDMX_HEADER = b'Art-Net\x00\x00P\x00\x0e'
+    
+    Because show control software does a great number of things with Art-Net, 
+    we're being more lenient about header checking.  OpCode is checked at
+    dispatch time, and protocol version is currently ignored.
+    """
+    ARTDMX_HEADER = b'Art-Net\x00\x00'
 
-    def __init__(self, listen_ip: str, udp_port: int, callback):
+    def __init__(self, listen_ip: str, udp_port: int, pollReplyPacket, callback):
         """Initializes Art-Net server."""
         # server active flag
         self.listen = True
         self.callback = callback
         self.listen_ip = listen_ip
         self.UDP_PORT = udp_port
+        self.pollReplyPacket = pollReplyPacket
 
         self.server_thread = Thread(target=self.__init_socket, daemon=True)
         self.server_thread.start()
@@ -61,7 +69,7 @@ class ArtnetServer:
             data, sender = self.socket_server.recvfrom(2048)
 
             # check the header -- we only support Art-Net DMX
-            if data[:9] == ArtnetServer.ARTDMX_HEADER[:9]:
+            if data[:9] == ArtnetServer.ARTDMX_HEADER:
                 if data[9] == 0x50:
 
                     # TODO - check packet sequence number
@@ -85,56 +93,11 @@ class ArtnetServer:
 
     def send_artnet_poll_reply(self, address):
         """
-        Send an Art-Net PollReply packet to the specified address. This lets
-        Art-Net controllers know that we're here and what we can do.
+        Responds to an Art-Net Poll packet with a PollReply packet.
         :param address:
         :return:
         """
-        # Art-Net header
-        header = b'Art-Net\x00'
-
-        # OpCode for ArtPollReply packet
-        opcode = (0x2100).to_bytes(2, byteorder='little')
-
-        # Giant yard sale of device information!  Most of this doesn't apply to us.
-        ip_address =  socket.inet_aton(self.listen_ip)  # Flamecaster's listen IP address
-        port_number = self.UDP_PORT.to_bytes(2, byteorder='big')  # Flamecaster's listen port number
-        version_info = (1).to_bytes(2, byteorder='big')  #  firmware version
-        net_switch = (0).to_bytes(1, byteorder='big')  # NetSwitch
-        sub_switch = (0).to_bytes(1, byteorder='big')  # SubSwitch
-        oem = (0).to_bytes(2, byteorder='big')  # OEM value?
-        ubea_version = (0).to_bytes(1, byteorder='big')  # Ubea Version?
-        status1 = (0).to_bytes(1, byteorder='big')  # device Status1
-        esta_manufacturer = (0).to_bytes(2, byteorder='big')  # ESTA Manufacturer code?
-        short_name = 'FC'.ljust(18, '\x00').encode()  # Short Name
-        long_name = 'Flamecaster'.ljust(64, '\x00').encode()  # Long Name
-        node_report = 'No errors'.ljust(64, '\x00').encode()  # Node Report
-        num_ports = (0).to_bytes(2, byteorder='big')  #  NumPorts
-        port_types = (0).to_bytes(4, byteorder='big')  # PortTypes
-        good_input = (0).to_bytes(4, byteorder='big')  # GoodInput
-        good_output = (0).to_bytes(4, byteorder='big')  # GoodOutput
-        sw_in = (0).to_bytes(4, byteorder='big')  # SwIn
-        sw_out = (0).to_bytes(4, byteorder='big')  # SwOut
-        sw_video = (0).to_bytes(1, byteorder='big')  # SwVideo
-        sw_macro = (0).to_bytes(1, byteorder='big')  # SwMacro
-        sw_remote = (0).to_bytes(1, byteorder='big')  # SwRemote
-        spare = (0).to_bytes(4, byteorder='big')  # Spare
-        style = (0).to_bytes(1, byteorder='big')  # Style
-        mac_address = b'\x00\x00\x00\x00\x00\x00'  # MAC Address
-        bind_ip = socket.inet_aton(self.listen_ip)  # Flamecaster's BindIP
-        bind_index = (0).to_bytes(1, byteorder='big')  # BindIndex
-        status2 = (0).to_bytes(1, byteorder='big')  #  Status2
-        filler = (0).to_bytes(26, byteorder='big')  # Filler
-
-        # Combine to form the Art-Net PollReply packet
-        artnet_poll_reply_packet = (header + opcode + ip_address + port_number + version_info + net_switch +
-                                    sub_switch + oem + ubea_version + status1 + esta_manufacturer + short_name +
-                                    long_name + node_report + num_ports + port_types + good_input + good_output +
-                                    sw_in + sw_out + sw_video + sw_macro + sw_remote + spare + style + mac_address +
-                                    bind_ip + bind_index + status2 + filler)
-
-        # Send the packet
-        self.socket_server.sendto(artnet_poll_reply_packet, address)
+        self.socket_server.sendto(self.pollReplyPacket, address)
 
     def __del__(self):
         """Graceful shutdown."""

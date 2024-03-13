@@ -1,5 +1,6 @@
 import logging
 import time
+import socket
 
 from ArtnetServer import ArtnetServer
 from ArtnetUtils import time_in_millis
@@ -24,6 +25,7 @@ class ArtnetRouter:
     config = None
     universes = []
     deviceList = None
+    pollReplyPacket = None
 
     pixels = []
 
@@ -49,7 +51,9 @@ class ArtnetRouter:
 
         # loop 'till we're done, listening for packets and forwarding the pixel data
         # to Pixelblazes
-        self.receiver = ArtnetServer(self.config["ipArtnet"], self.config["portArtnet"], self.main_dispatcher)
+        self.pollReplyPacket = self.createPollReplyPacket(self.config['ipArtnet'], self.config['portArtnet'])
+        self.receiver = ArtnetServer(self.config["ipArtnet"], self.config["portArtnet"], self.pollReplyPacket,
+                                     self.main_dispatcher)
         sleep_time = self.config['statusUpdateIntervalMs'] / 1000
 
         # Periodically send updated status information to the UI queue, where
@@ -139,3 +143,53 @@ class ArtnetRouter:
         result = result[:-1]
         result += "}}"
         return result
+
+    def createPollReplyPacket(self, listen_ip: str, udp_port: int):
+        """
+        Create an Art-Net PollReply packet that we can send to controllers, so
+        automatic detection and connection monitoring will work.
+        :param address:
+        :return:
+        """
+        # Art-Net header
+        header = b'Art-Net\x00'
+
+        # OpCode for ArtPollReply packet
+        opcode = (0x2100).to_bytes(2, byteorder='little')
+
+        # Giant yard sale of device information!  Most of this doesn't apply to us.
+        ip_address = socket.inet_aton(listen_ip)  # Flamecaster's listen IP address
+        port_number = udp_port.to_bytes(2, byteorder='big')  # Flamecaster's listen port number
+        version_info = (1).to_bytes(2, byteorder='big')  # firmware version
+        net_switch = (0).to_bytes(1, byteorder='big')  # NetSwitch
+        sub_switch = (0).to_bytes(1, byteorder='big')  # SubSwitch
+        oem = (0).to_bytes(2, byteorder='big')  # OEM value?
+        ubea_version = (0).to_bytes(1, byteorder='big')  # Ubea Version?
+        status1 = (0).to_bytes(1, byteorder='big')  # device Status1
+        esta_manufacturer = (0).to_bytes(2, byteorder='big')  # ESTA Manufacturer code?
+        short_name = 'FC'.ljust(18, '\x00').encode()  # Short Name
+        long_name = 'Flamecaster'.ljust(64, '\x00').encode()  # Long Name
+        node_report = 'No errors'.ljust(64, '\x00').encode()  # Node Report
+        num_ports = (0).to_bytes(2, byteorder='big')  # NumPorts
+        port_types = (0).to_bytes(4, byteorder='big')  # PortTypes
+        good_input = (0).to_bytes(4, byteorder='big')  # GoodInput
+        good_output = (0).to_bytes(4, byteorder='big')  # GoodOutput
+        sw_in = (0).to_bytes(4, byteorder='big')  # SwIn
+        sw_out = (0).to_bytes(4, byteorder='big')  # SwOut
+        sw_video = (0).to_bytes(1, byteorder='big')  # SwVideo
+        sw_macro = (0).to_bytes(1, byteorder='big')  # SwMacro
+        sw_remote = (0).to_bytes(1, byteorder='big')  # SwRemote
+        spare = (0).to_bytes(4, byteorder='big')  # Spare
+        style = (0).to_bytes(1, byteorder='big')  # Style
+        mac_address = b'\x00\x00\x00\x00\x00\x00'  # MAC Address
+        bind_ip = socket.inet_aton(listen_ip)  # Flamecaster's BindIP
+        bind_index = (0).to_bytes(1, byteorder='big')  # BindIndex
+        status2 = (0).to_bytes(1, byteorder='big')  # Status2
+        filler = (0).to_bytes(26, byteorder='big')  # Filler
+
+        # Combine to form the Art-Net PollReply packet
+        return (header + opcode + ip_address + port_number + version_info + net_switch +
+                sub_switch + oem + ubea_version + status1 + esta_manufacturer + short_name +
+                long_name + node_report + num_ports + port_types + good_input + good_output +
+                sw_in + sw_out + sw_video + sw_macro + sw_remote + spare + style + mac_address +
+                bind_ip + bind_index + status2 + filler)

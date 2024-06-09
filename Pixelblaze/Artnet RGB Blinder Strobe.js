@@ -9,12 +9,10 @@
 // For use with Flamecaster Art-Net to Pixelblaze router
 
 export var channels = array(5)
-channels[0] = 0.75 * 255
-channels[3] = 127
-channels[4] = 0
 
 var r,g,b
-export var strobeBri, strobeRate,s
+var strobeBri, strobeRate
+var strobeDutyCycle = 0.2
 
 translate(-0.5,-0.5)
 
@@ -29,9 +27,8 @@ export function beforeRender(delta) {
   // strobe rate controllable from 10hz to 1hz
   // rate == 0, is "on" (at specified brightness)
   strobeBri = channels[3] / 255
-  strobeRate = (strobeRate == 0) ? 0 : mix(0.0015,0.015,channels[4] / 255)
-  strobeBri = channels[3] / 255  
-  strobeBri *= square(time(channels[4] / 255),0.1)   
+  strobeRate = (channels[4] == 0) ? 0 : mix(0.0015,0.015,channels[4] / 255)
+  strobeBri = (channels[3] / 255) * square(time(strobeRate),strobeDutyCycle)   
 }
 
 export function render(index) {

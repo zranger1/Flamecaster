@@ -432,7 +432,7 @@ class Flamecaster(App):
         devTag = make_unique_tag(data)
 
         # add the new device to the database
-        data[devTag] = {'name': '*New*', 'ip': '0.0.0.0', 'pixelCount': 0, 'maxFps': 30, 'renderPattern': '@preset'}
+        data[devTag] = {'name': '*New*', 'ip': '0.0.0.0', 'pixelCount': 0, 'maxFps': 30, 'deviceStyle': 'pixels'}
 
         # append an empty "data" dictionary to the device
         data[devTag]['data'] = dict()

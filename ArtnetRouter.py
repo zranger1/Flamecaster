@@ -3,7 +3,7 @@ import time
 import socket
 
 from ArtnetServer import ArtnetServer
-from ArtnetUtils import time_in_millis
+from ArtnetUtils import time_in_millis, decode_address_int
 from ConfigParser import ConfigParser
 from ProjectData import ProjectData
 
@@ -103,7 +103,7 @@ class ArtnetRouter:
         del self.receiver
 
     def main_dispatcher(self, addr, data):
-        """Test function, receives data from server callback."""
+        """Receives data from server callback and dispatches it to display devices."""
         # universe, subnet, net = decode_address_int(addr)
         # print("%d, subnet %d, net %d" % (universe, subnet, net))
 
@@ -113,7 +113,7 @@ class ArtnetRouter:
             for k in u:
                 if k.address_mask == addr:
                     # Art-Net datagram size - 512 bytes of data plus 60 bytes of header
-                    k.device.process_pixel_data(data, k.startChannel, k.destIndex, k.pixelCount)
+                    k.device.process_packet(data, k.startChannel, k.destIndex, k.pixelCount)
 
     # use each universe's str() method to convert the printable data in self.universes into a JSON string
     # by calling the __str__ method of each UniverseFragment in the list, and concatenating the results

@@ -1,6 +1,6 @@
 """
 ArtnetServer.py - Provides a super simplified Artnet server implementation
-specifically for this project.
+specifically for this project.@
 
 Artnet protocol implementation adapted from StupidArtnet at
 https://github.com/cpvalente/stupidArtnet
@@ -71,7 +71,6 @@ class ArtnetServer:
             # check the header -- we only support Art-Net DMX
             if data[:9] == ArtnetServer.ARTDMX_HEADER:
                 if data[9] == 0x50:
-
                     # TODO - check packet sequence number
                     # At worst, we should track this per-universe and drop out-of-order
                     # packets, or if the sequence number is too old, indicating an episode of very high
@@ -87,9 +86,8 @@ class ArtnetServer:
                     addr = int.from_bytes(data[14:16], byteorder='little')
                     self.callback(addr, bytearray(data)[18:])
 
-                elif data[9] == 0x20:
-                    self.send_artnet_poll_reply(sender)
-
+            elif data[9] == 0x20:
+                self.send_artnet_poll_reply(sender)
 
     def send_artnet_poll_reply(self, address):
         """
@@ -113,4 +111,3 @@ class ArtnetServer:
         """Close UDP socket."""
         self.listen = False  # Set flag
         self.server_thread.join()  # Terminate thread once jobs are complete
-

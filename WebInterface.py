@@ -316,7 +316,7 @@ class Flamecaster(App):
             row (int): row index.
             column (int): column index.
         """
-        # perform minimal validation on the new value
+        # perform a little validation on the new value
         new_value = str_to_int(new_value)
 
         # make sure that address values are in roughly the correct range
@@ -324,6 +324,20 @@ class Flamecaster(App):
         # TODO - really!  This is high priority!
         if column < 3:
             new_value = clamp(new_value, 0, 255)
+        # start channel can be 0-511
+        elif column == 3:
+            new_value = clamp(new_value, 0, 511)
+        # destIndex can be up to the device's pixel count - 1
+        elif column == 4:
+            devTag = self.universesPanel.deviceTag
+            devicePixelCount = pd.editableConfig.get('devices', {}).get(devTag, {}).get('pixelCount', 0)
+            new_value = clamp(new_value, 0, devicePixelCount - 1)
+        # pixel count per channel can be up to 170
+        elif column == 5:
+            new_value = clamp(new_value, 0, 170)
+
+        # put the validated value in the table
+        item.set_text(str(new_value))
 
         # figure out where it belongs in the database and put it there.
         devTag = self.universesPanel.deviceTag
@@ -476,7 +490,7 @@ class Flamecaster(App):
         # TODO - I think some programs like XLights operate that way by default.
         devicePixelCount = pd.editableConfig.get('devices', {}).get(devTag, {}).get('pixelCount', 0)
 
-        # how many pixels have been acounted for in the device's universes?
+        # how many pixels have been accounted for in the device's universes?
         pixelsUsed = 0
         for u in data.values():
             pixelsUsed += u.get('pixelCount', 0)

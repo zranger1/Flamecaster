@@ -6,10 +6,12 @@ This is a work in progress.  You are welcome to try it out, and I would love to 
 but please check back frequently for updates, and be aware that it is not yet ready for production use. 
 
 ### State of the Project
+As of 6/9/2024...
 
-##### *Latest Updates*
-**Implemented Fixture mode.** This allows you to send individual channels of DMX data to a Pixelblaze, rather than
-sending pixels as RGB data.  To use this feature:
+##### *New: Fixture Mode*
+
+Allows you to treat a Pixelblaze as a custom DMX fixture, controlled by individual channels of DMX data from your mixing
+desk or software, rather than sending individual pixels as RGB data.  To use this feature:
 - Go to the Pixelblazes tab and change the device's style to "fixture" (rather than "pixels").
 - Set the device's pixel count to the number of DMX channels you want to use.
 - Configure the universe/net/subnet data for the device.
@@ -18,8 +20,12 @@ to treat a Pixelblaze and all its attached pixels as a single generic RGB fixtur
 three channels (red, green, blue) on your lighting console or software.
 - Assign DMX channels on your controller as needed to control the Pixelblaze's parameters.  
 
-##### *Art-Net -> Pixelblaze Routing works!*
-You can send Art-Net data from your lighting application to FlameCaster, and on to your Pixelblazes!
+##### *New: ArtPollReply Support*
+Flamecaster now responds to ArtPoll queries from lighting software, which enables it to work with Resolume and other
+professional lighting software that use ArtPoll to discover and monitor Art-Net devices.
+
+##### *Art-Net -> Pixelblaze Routing*
+You can send Art-Net pixel data from your lighting application to FlameCaster, and on to your Pixelblazes!
 At this point, routing is quite reliable, even as Pixelblazes and Art-Net sources come and go at random. There is still
 work to be done to see if we can improve frame rates for Pixelblazes with large (>500) numbers of pixels. This appears
 to be a function of both wi-fi signal quality and the size of the websockets messages that must be sent for

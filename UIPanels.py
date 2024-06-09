@@ -174,7 +174,7 @@ class DevicesContainer(Container):
         self.append(btn, 'btnRemove')
 
         table = SingleRowSelectionTable(2, 5, True, True, width="100%", height="100%")
-        table.set_column_keys(['name', 'ip', 'pixelCount', 'maxFps', 'style'])
+        table.set_column_keys(['name', 'ip', 'pixelCount', 'maxFps', 'deviceStyle'])
         table.style['position'] = "absolute"
         table.style['overflow'] = "auto"
         table.style['left'] = "0px"

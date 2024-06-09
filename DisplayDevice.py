@@ -149,10 +149,8 @@ class DisplayDevice:
 
         if self.pb is not None and self.pb.is_connected():
             if self.deviceStyle == self.DeviceStyles.Fixture:
-                print("Fixture mode")
                 self.sendMethod = self._send_channel_data
             else:
-                print("Pixel mode")
                 self.sendMethod = self._send_pixel_data
 
     def _send_pixel_data(self):

@@ -290,10 +290,14 @@ class Flamecaster(App):
         if column == 2 or column == 3:
             new_value = str_to_int(new_value)
 
-        # don't allow changing the render pattern for now
-        # TODO - figure out what we need to do with this
+        # perform a little validation on "pixels" vs "fixture" setting
+        # TODO - need better UI for this, among other things.
         elif column == 4:
-            new_value = "@preset"
+            if 'p' in new_value.lower():
+                new_value = "pixels"
+            else:
+                new_value = "fixture"
+            item.set_text(new_value)
 
         # figure out where it belongs in the database
         devTag = table.get_row_key(row)
@@ -432,7 +436,7 @@ class Flamecaster(App):
         devTag = make_unique_tag(data)
 
         # add the new device to the database
-        data[devTag] = {'name': '*New*', 'ip': '0.0.0.0', 'pixelCount': 0, 'maxFps': 30, 'renderPattern': '@preset'}
+        data[devTag] = {'name': '*New*', 'ip': '0.0.0.0', 'pixelCount': 0, 'maxFps': 30, 'deviceStyle': 'pixels'}
 
         # append an empty "data" dictionary to the device
         data[devTag]['data'] = dict()

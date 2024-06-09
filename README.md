@@ -6,6 +6,18 @@ This is a work in progress.  You are welcome to try it out, and I would love to 
 but please check back frequently for updates, and be aware that it is not yet ready for production use. 
 
 ### State of the Project
+
+##### *Latest Updates*
+**Implemented Fixture mode.** This allows you to send individual channels of DMX data to a Pixelblaze, rather than
+sending pixels as RGB data.  To use this feature:
+- Go to the Pixelblazes tab and change the device's style to "fixture" (rather than "pixels").
+- Set the device's pixel count to the number of DMX channels you want to use.
+- Configure the universe/net/subnet data for the device.
+- Load an appropriate pattern on your Pixelblaze.  For example, the included patttern "Artnet RGB Fixture" allows you
+to treat a Pixelblaze and all its attached pixels as a single generic RGB fixture.  You can control its color using
+three channels (red, green, blue) on your lighting console or software.
+- Assign DMX channels on your controller as needed to control the Pixelblaze's parameters.  
+
 ##### *Art-Net -> Pixelblaze Routing works!*
 You can send Art-Net data from your lighting application to FlameCaster, and on to your Pixelblazes!
 At this point, routing is quite reliable, even as Pixelblazes and Art-Net sources come and go at random. There is still
@@ -88,6 +100,8 @@ More information about pixelblaze-client can be found at: https://github.com/zra
 ```
 v0.5.0   03/03/2024 Initial pre-alpha release
 v0.5.1   03/04/2024 Update to packet handling to make Xlights happier
+v0.5.2   03/05/2024 Add ArtPollReply support for Resolume
+v0.5.3   03/06/2024 Minor bug fixes and performance improvements 
 ```
 
 ### Donation

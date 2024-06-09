@@ -125,7 +125,7 @@ class Pixelblaze:
             uri = "ws://" + self.ipAddress + ":81"
 
             try:
-                self.ws = websocket.create_connection(uri, sockopt=(
+                self.ws = websocket.create_connection(uri, skip_utf8_validation=True, sockopt=(
                     (socket.SOL_SOCKET, socket.SO_REUSEADDR, 1), (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1),))
 
             except websocket._exceptions.WebSocketConnectionClosedException:

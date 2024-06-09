@@ -23,6 +23,9 @@ class DisplayDevice:
     thread = None
     name = "<no device>"
     pixelCount = 0
+    deviceStyle = "pixels"
+    packetHandler = None
+    channelData = None
     pixelsReceived = 0
     pixelsUpdated = 0
     maxFps = 1000
@@ -35,12 +38,24 @@ class DisplayDevice:
 
     pixels = []
 
+    class DeviceStyles(IntEnum):
+        Pixels = 0
+        Fixture = 1
+
     def __init__(self, device, config):
 
         # set up device information record
         self.ip = getParam(device, 'ip', "")
         self.name = getParam(device, 'name', "<none>")
         self.pixelCount = getParam(device, 'pixelCount', 0)
+        s = getParam(device, 'deviceStyle', "pixels")
+        if s == "pixels":
+            self.deviceStyle = self.DeviceStyles.Pixels
+            self.packetHandler = self.process_pixel_data
+        else:
+            self.deviceStyle = self.DeviceStyles.Fixture
+            self.packetHandler = self.process_channel_data
+            self.channelData = bytearray(self.pixelCount)
 
         # both the device and the system configuration can specify a maxFps.
         # We take the lowest of the two.
@@ -62,6 +77,35 @@ class DisplayDevice:
         self.frame_timer = 0
         thread.start()
 
+    def process_packet(self, dmxPixels: bytearray, startChannel: int, destPixel: int, count: int):
+        """
+        Process a packet of DMX data.  This function is called by the main
+        ArtnetServer thread when a packet is received.  It will process the
+        packet and update the display device's pixel or channel buffer, depending
+        on the device's configuration.
+        :param dmxPixels: byte array of DMX data
+        :param startChannel: starting channel in the Artnet packet
+        :param destPixel: index of first pixel or channel in destination array
+        :param count: number of pixels or channels to process
+        """
+        self.packetHandler(dmxPixels, startChannel, destPixel, count)
+
+    def process_channel_data(self, dmxPixels: bytearray, startChannel: int, destChannel: int, count: int):
+        self.packets_in += 1
+        self.pixelsReceived += count
+        self.pixelsUpdated += count
+
+        index = startChannel
+        chNum: int = destChannel
+        maxIndex = min(self.pixelCount, destChannel + count)
+
+        while chNum < maxIndex:
+            # if data has changed, update the channel data
+            if dmxPixels[index] != self.channelData[chNum]:
+                self.channelData[chNum] = dmxPixels[index]
+            chNum += 1
+            index += 1
+
     def process_pixel_data(self, dmxPixels: bytearray, startChannel: int, destPixel: int, count: int):
         """
         Pack RGB color data into a single 32-bit fixed point float for
@@ -71,7 +115,6 @@ class DisplayDevice:
         :param destPixel: index of first pixel in destination array
         :param count: number of pixels to process
         """
-
         self.packets_in += 1
         self.pixelsReceived += count
         self.pixelsUpdated += count
@@ -105,9 +148,12 @@ class DisplayDevice:
         """
 
         if self.pb is not None and self.pb.is_connected():
-            self.sendMethod = self._send_frame
+            if self.deviceStyle == self.DeviceStyles.Fixture:
+                self.sendMethod = self._send_channel_data
+            else:
+                self.sendMethod = self._send_pixel_data
 
-    def _send_frame(self):
+    def _send_pixel_data(self):
         """
         Send a frame of packed pixel data to the Pixelblaze
         """
@@ -117,6 +163,21 @@ class DisplayDevice:
             # *really* wants you to have.  We want to send out as few bytes of data as possible.
             self.pb.ws.send(
                 "{\"setVars\":{\"pixels\":[" + ",".join(f"{x:5g}".lstrip(" ") for x in self.pixels) + "]}}")
+            self.packets_out += 1
+            self.pixelsUpdated = 0
+
+    def _send_channel_data(self):
+        """
+        Send a frame of DMX channel data to the Pixelblaze as bytes
+        """
+
+        if self.pixelsUpdated > 0:
+            # go to great lengths to get rid of the spaces, zeros and spurious digits python
+            # *really* wants you to have.  We want to send out as few bytes of data as possible.
+            # self.pb.ws.send(
+            self.pb.ws.send(
+                "{\"setVars\":{\"channels\":[" + ",".join(f"{x:d}".lstrip(" ") for x in self.channelData) + "]}}")
+
             self.packets_out += 1
             self.pixelsUpdated = 0
 

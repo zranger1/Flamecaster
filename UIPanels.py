@@ -174,7 +174,7 @@ class DevicesContainer(Container):
         self.append(btn, 'btnRemove')
 
         table = SingleRowSelectionTable(2, 5, True, True, width="100%", height="100%")
-        table.set_column_keys(['name', 'ip', 'pixelCount', 'maxFps', 'renderPattern'])
+        table.set_column_keys(['name', 'ip', 'pixelCount', 'maxFps', 'deviceStyle'])
         table.style['position'] = "absolute"
         table.style['overflow'] = "auto"
         table.style['left'] = "0px"
@@ -184,7 +184,7 @@ class DevicesContainer(Container):
         table.item_at(0, 1).set_text("IP Address")
         table.item_at(0, 2).set_text("Pixels")
         table.item_at(0, 3).set_text("Max FPS")
-        table.item_at(0, 4).set_text("Pattern")
+        table.item_at(0, 4).set_text("Style")
         self.append(table, 'pb_table')
 
     def set_devices_text(self, data: dict):
@@ -211,7 +211,7 @@ class DevicesContainer(Container):
             table.item_at(row, 1).set_text(db.get('ip', ''))
             table.item_at(row, 2).set_text(str(db.get('pixelCount', 0)))
             table.item_at(row, 3).set_text(str(db.get('maxFps', 30)))
-            table.item_at(row, 4).set_text(db.get('renderPattern', '@preset'))
+            table.item_at(row, 4).set_text(db.get('deviceStyle', 'pixels'))
             row += 1
 
 

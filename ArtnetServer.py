@@ -1,6 +1,6 @@
 """
 ArtnetServer.py - Provides a super simplified Artnet server implementation
-specifically for this project.
+specifically for this project.@
 
 Artnet protocol implementation adapted from StupidArtnet at
 https://github.com/cpvalente/stupidArtnet
@@ -8,7 +8,6 @@ https://github.com/cpvalente/stupidArtnet
 2/2024 ZRanger1
 """
 
-import logging
 import socket
 from threading import Thread
 
@@ -27,20 +26,28 @@ class ArtnetServer:
     socket_server = None
     callback = None
     sequence = 0
+    pollReplyPacket = None
 
-    # Art-Net packet header to use for validation
-    # The packet header spells Art-Net
-    # The definition is for DMX Artnet (OPCode 0x50)
-    # The protocol version is 15
+    """
+    Art-Net packet header to use for validation
+    Here's the full header, including the OpCode and protocol version)
+    This definition is for DMX Artnet (OPCode 0x50), protocol version 15.    
     ARTDMX_HEADER = b'Art-Net\x00\x00P\x00\x0e'
+    
+    Because show control software does a great number of things with Art-Net, 
+    we're being more lenient about header checking.  OpCode is checked at
+    dispatch time, and protocol version is currently ignored.
+    """
+    ARTDMX_HEADER = b'Art-Net\x00\x00'
 
-    def __init__(self, listen_ip: str, udp_port: int, callback):
+    def __init__(self, listen_ip: str, udp_port: int, pollReplyPacket, callback):
         """Initializes Art-Net server."""
         # server active flag
         self.listen = True
         self.callback = callback
         self.listen_ip = listen_ip
         self.UDP_PORT = udp_port
+        self.pollReplyPacket = pollReplyPacket
 
         self.server_thread = Thread(target=self.__init_socket, daemon=True)
         self.server_thread.start()
@@ -59,25 +66,36 @@ class ArtnetServer:
 
         while self.listen:
 
-            data, unused_address = self.socket_server.recvfrom(2048)
+            data, sender = self.socket_server.recvfrom(2048)
 
             # check the header -- we only support Art-Net DMX
-            if data[:12] == ArtnetServer.ARTDMX_HEADER:
+            if data[:9] == ArtnetServer.ARTDMX_HEADER:
+                if data[9] == 0x50:
+                    # TODO - check packet sequence number
+                    # At worst, we should track this per-universe and drop out-of-order
+                    # packets, or if the sequence number is too old, indicating an episode of very high
+                    # packet loss, restart the sequence.
+                    # Right now, we're just going to ignore the sequence number
 
-                # TODO - check packet sequence number
-                # At worst, we should track this per-universe and drop out-of-order
-                # packets, or if the sequence number is too old, indicating an episode of very high
-                # packet loss, restart the sequence.
-                # Right now, we're just going to ignore the sequence number
-                new_seq = data[12]
-                old_seq = self.sequence
-                self.sequence = new_seq
+                    new_seq = data[12]
+                    old_seq = self.sequence
+                    self.sequence = new_seq
 
-                # pass the buffer to the callback function
-                # for distribution to interested pixelblazes
-                addr = int.from_bytes(data[14:16], byteorder='little')
-                self.callback(addr, bytearray(data)[18:])
+                    # pass the buffer to the callback function
+                    # for distribution to interested pixelblazes
+                    addr = int.from_bytes(data[14:16], byteorder='little')
+                    self.callback(addr, bytearray(data)[18:])
 
+            elif data[9] == 0x20:
+                self.send_artnet_poll_reply(sender)
+
+    def send_artnet_poll_reply(self, address):
+        """
+        Responds to an Art-Net Poll packet with a PollReply packet.
+        :param address:
+        :return:
+        """
+        self.socket_server.sendto(self.pollReplyPacket, address)
 
     def __del__(self):
         """Graceful shutdown."""
@@ -93,4 +111,3 @@ class ArtnetServer:
         """Close UDP socket."""
         self.listen = False  # Set flag
         self.server_thread.join()  # Terminate thread once jobs are complete
-

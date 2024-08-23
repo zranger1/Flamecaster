@@ -295,7 +295,7 @@ class UniversesContainer(Container):
             subnet = data.get(key).get('subnet', 0)
             net = data.get(key).get('net', 0)
             if universe > 15:
-                universe,subnet,net = decode_address_int(universe)
+                net,subnet,universe = decode_address_int(universe)
 
             table.item_at(row, 0).set_text(str(net))
             table.item_at(row, 1).set_text(str(subnet))

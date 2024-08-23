@@ -21,6 +21,10 @@ class UniverseFragment:
         self.net = getParam(record, "net", 0)
         self.subnet = getParam(record, "subnet", 0)
         self.universe = getParam(record, "universe", 0)
+        # use "simplifed" artnet addressing if available
+        if self.universe > 15:
+            self.net, self.subnet, self.universe = decode_address_int(self.universe)
+
         self.address_mask = artnet_to_int(self.net, self.subnet, self.universe)
         self.startChannel = getParam(record, "startChannel", 0)
         self.destIndex = getParam(record, "destIndex", 0)
